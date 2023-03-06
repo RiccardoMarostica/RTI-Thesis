@@ -2,7 +2,6 @@ import cv2 as cv
 import numpy as np
 import functions.helpers as helpers
 
-
 # Define main function to calibrate both camera parameters
 def main():
     
@@ -19,11 +18,6 @@ def main():
     calibrateCamera(False)
     
     helpers.consoleLog("Complete calibrating the moving camera", "Main")
-
-"""
-_summary_ The function calibrates camera parameters based on the value of the input paramter
-"""
-
 
 def calibrateCamera(isStatic: bool):
     if isStatic:  # If param is true, then we compute parameters for the static camera
