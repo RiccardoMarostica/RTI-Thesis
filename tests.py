@@ -5,113 +5,79 @@ import moviepy.editor as mp
 import os
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg/5.1.2_5/bin/ffmpeg"
 
+from constants import *
 
 # Load the two videos and extract their audio
-video1 = cv.VideoCapture('./video/cam-static/coin1.mp4')
-audio1 = mp.AudioFileClip('./video/cam-static/coin1.mp4').subclip(0, 5).to_soundarray()
+video1 = cv.VideoCapture('./video/cam-static/coin2.mp4')
+audio1 = mp.AudioFileClip('./video/cam-static/coin2.mp4')
 
-video2 = cv.VideoCapture('./video/cam-moving/coin1.mp4')
-audio2 = mp.AudioFileClip('./video/cam-moving/coin1.mp4').subclip(0, 5).to_soundarray()
+video2 = cv.VideoCapture('./video/cam-moving/coin2.mp4')
+audio2 = mp.AudioFileClip('./video/cam-moving/coin2.mp4')
+
+# Now, get the inital 5 seconds in order to calculate the offset.
+# From these 5 seconds, retrieve the sound array and convert their values using as sampling rate 44100 Hz.
+# That value represnts the best value for audio sampling.
+audio1 = audio1.subclip(0, 5).to_soundarray(fps=DEFAULT_SAMPLING_AUDIO_RATE)
+audio2 = audio2.subclip(0, 5).to_soundarray(fps=DEFAULT_SAMPLING_AUDIO_RATE)
 
 # Compute the cross-correlation of the left audio channels
 corr = np.correlate(audio1[:, 0], audio2[:, 0], mode='full')
 offset = corr.argmax() - (len(corr) // 2)
-print(f"Audio offset: {offset}")
 
-# Get offset in seconds (as an integer)
-offset_sec = int(round(offset / 44100))
-print(f"Audio offset in seconds: {offset_sec}")
+# Get offset in seconds
+offset_sec = offset / DEFAULT_SAMPLING_AUDIO_RATE
+
+print("Offset in seconds: ", offset_sec)
+
+# Then, get the fps of both video, and check if the both are equal to the default fps rate
+fpsVideo1 = int(round(video1.get(cv.CAP_PROP_FPS)))
+fpsVideo2 = int(round(video2.get(cv.CAP_PROP_FPS)))
+
+# If one of them is not as the default fps rate, then modify the video
+if (fpsVideo1 != DEFAULT_FPS_RATE or fpsVideo2 != DEFAULT_FPS_RATE):
+    # TODO: Aggiungere parte per modifica FPS del video
+    print("Different Video FPS")
 
 # Now, we can compute the frame count to shift the two videos
-frameCount = int(offset_sec * int(round(video1.get(cv.CAP_PROP_FPS))))
+frameCount = abs(int(offset_sec * DEFAULT_FPS_RATE))
+
+print("Frame difference: ", frameCount)
 
 if offset > 0:
+    # If the offset is positive, then the first video starts sooner.
+    # So move its position in order to start as the second video
     print("First case")
+
     video1.set(cv.CAP_PROP_POS_FRAMES, frameCount)
     video2.set(cv.CAP_PROP_POS_FRAMES, 0)
 elif offset < 0:
+    # Otherwise, if the offset is negative, then we have the opposite scenario.
     print("Second case")
+    
     video1.set(cv.CAP_PROP_POS_FRAMES, 0)
-    video2.set(cv.CAP_PROP_POS_FRAMES, -frameCount)
+    video2.set(cv.CAP_PROP_POS_FRAMES, frameCount)
 
-while True:
+# While one of the two videos is open, then read frame by frame
+while video1.isOpened() or video2.isOpened():
+    
+    # Get the frame from each video
     ret1, frame1 = video1.read()
     ret2, frame2 = video2.read()
-    
+
+    # If one of the two does not return a frame, then exit the loop
     if not ret1 or not ret2:
         break
     
-    cv.imshow("Frame video 1", frame1)
-    cv.imshow("Frame video 2", frame2)
+    cv.imshow("Frames Video 1", frame1)
+    cv.imshow("Frames Video 2", frame2)
 
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):
-        break 
-        
+        break
+
+# Release videos
 video1.release()
 video2.release()
 
+# And destroy windows
 cv.destroyAllWindows()
-
-##
-# Steps da effettuare per eseguire la sincronizzazione dei video.
-# 1 - Ottenere i due video, e le loro informazioni.
-# 2 - Impostare entrambi i video con la durata del video più corto. Reimpostare poi il puntatore all'inizio del video
-# 3 - Una volta che i due video sono della stessa lunghezza, calcolare l'offset che c'è tra i due in base all'audio
-# 4 - Capire a quale dei due video è necessario effettuare l'offset
-# 5 - applicare l'offset al video corretto
-# #
-# video1 = cv.VideoCapture("./video/cam-static/coin1.mp4")
-# video2 = cv.VideoCapture("./video/cam-moving/coin1.mp4")
-
-# # Get the frame per second of each video
-# # We assume they both have the same frame per second
-# fps1 = int(round(video1.get(cv.CAP_PROP_FPS)))
-# fps2 = int(round(video2.get(cv.CAP_PROP_FPS)))
-
-# # Get the number of frames in both video
-# frameCount1 = int(video1.get(cv.CAP_PROP_FRAME_COUNT))
-# frameCount2 = int(video2.get(cv.CAP_PROP_FRAME_COUNT))
-
-# # From the previous two information, compute the duration in seconds
-# videoLength1 = int(round(frameCount1 / fps1))
-# videoLength2 = int(round(frameCount2 / fps2))
-
-# print("Frame count video 1: ", frameCount1)
-# print("Frame count video 2: ", frameCount2)
-
-# # Chekc which video is the smallest, and store its frame count
-# if (videoLength1 <= videoLength2):
-#     frameCount = frameCount1
-# else:
-#     frameCount = frameCount2
-
-# print("Frame count: ", frameCount)
-
-# # Set the pointer for both video at the beginning (setting position frame to zero)
-# video1.set(cv.CAP_PROP_POS_FRAMES, 0)
-# video2.set(cv.CAP_PROP_POS_FRAMES, 0)
-
-# # ... and set the total number of frames for both video to the frame counts
-# video1.set(cv.CAP_PROP_FRAME_COUNT, frameCount)
-# video2.set(cv.CAP_PROP_FRAME_COUNT, frameCount)
-
-# while True:
-#     ret1, frame1 = video1.read()
-#     ret2, frame2 = video2.read()
-
-#     if not ret1 or not ret2:
-#         break
-    
-#     cv.imshow("Frame video 1", frame1)
-#     cv.imshow("Frame video 2", frame2)
-
-#     # Press Q on the keyboard to exit.
-#     if (cv.waitKey(25) & 0xFF == ord('q')):
-#         break
-    
-# video1.release()
-# video2.release()
-
-# # ... and closes all windows
-# cv.destroyAllWindows()
