@@ -39,7 +39,7 @@ if (fpsVideo1 != DEFAULT_FPS_RATE or fpsVideo2 != DEFAULT_FPS_RATE):
     print("Different Video FPS")
 
 # Now, we can compute the frame count to shift the two videos
-frameCount = abs(int(offset_sec * DEFAULT_FPS_RATE))
+frameCount = abs(int(round(offset_sec * DEFAULT_FPS_RATE)))
 
 print("Frame difference: ", frameCount)
 
