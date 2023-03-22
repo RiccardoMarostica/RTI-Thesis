@@ -21,7 +21,7 @@ def main():
 
 def calibrateCamera(isStatic: bool):
     if isStatic:  # If param is true, then we compute parameters for the static camera
-        videoCapture = cv.VideoCapture("video/cam-static/calibration.mp4")
+        videoCapture = cv.VideoCapture("./video/cam-static/calibration.mp4")
         paramsPath = "parameters/static/"
     else:  # Otherwise, we compute parameters for moving camera
         videoCapture = cv.VideoCapture("video/cam-moving/calibration.mp4")
@@ -127,8 +127,6 @@ def calibrateCamera(isStatic: bool):
     # rvecs -> vector of rotation vectors
     # tvecs -> vector of translation vectors
     ret, matrix, dist, rvecs, tvecs = cv.calibrateCamera(objPoints, imgPoints, calibrationPattern.shape[::-1], None, None)
-
-    print(rvecs)
 
     try:
         
