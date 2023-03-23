@@ -10,26 +10,26 @@ from constants import *
 # Define main function to calibrate both camera parameters
 def main():
     
-    # helpers.consoleLog("Starting camera calibrations", "MAIN")
+    helpers.consoleLog("Starting camera calibrations", "MAIN")
     
-    # # First, calibrate the static camera
-    # calibrateCamera(True)
+    # First, calibrate the static camera
+    calibrateCamera(True)
 
-    # # Then calibrate the moving camera    
-    # calibrateCamera(False)
+    # Then calibrate the moving camera    
+    calibrateCamera(False)
     
-    # helpers.consoleLog("Ended camera calibrations", "MAIN")
+    helpers.consoleLog("Ended camera calibrations", "MAIN")
     
     # # After retrieving the parameters of the camera, let's compute the offset between the two videos    
     # # Get the videos
     videoStatic = cv.VideoCapture(STATIC_VIDEO_FILE_PATH)
     videoMoving = cv.VideoCapture(MOVING_VIDEO_FILE_PATH)
     
-    # helpers.consoleLog("Video synchronisation starts", "MAIN")
+    helpers.consoleLog("Video synchronisation starts", "MAIN")
     
-    # synchroniseVideos(videoStatic, STATIC_VIDEO_FILE_PATH, videoMoving, MOVING_VIDEO_FILE_PATH)
+    synchroniseVideos(videoStatic, STATIC_VIDEO_FILE_PATH, videoMoving, MOVING_VIDEO_FILE_PATH)
     
-    # helpers.consoleLog("Video synchronisation ends", "MAIN")
+    helpers.consoleLog("Video synchronisation ends", "MAIN")
     
     # After setting the videos and synchronise them, the next step is to remove the distortion made by the camera lens
     # To do so, we need to use the undistortion values obtained in the previous step (camera calibration)
@@ -42,56 +42,33 @@ def main():
     # Get the distortion params from the file (for moving camera)
     distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
     mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
-
-    # Using Width and Height of the static camera, compute the new camera matrix for the static camera
-    wStatic = int(videoStatic.get(cv.CAP_PROP_FRAME_WIDTH))
-    hStatic = int(videoStatic.get(cv.CAP_PROP_FRAME_HEIGHT))
-    staticNewCameraMtx, roi = cv.getOptimalNewCameraMatrix(mtxVideoStatic, distVideoStatic, (wStatic, hStatic), 1, (wStatic, hStatic))
-
-    # # And this is done for the moving camera too
-    # wMoving = int(videoMoving.get(cv.CAP_PROP_FRAME_WIDTH))
-    # hMoving = int(videoMoving.get(cv.CAP_PROP_FRAME_HEIGHT))
+    
+    height = int(videoStatic.get(cv.CAP_PROP_FRAME_HEIGHT))
+    width = int(videoStatic.get(cv.CAP_PROP_FRAME_WIDTH))
+    
+    # While one of the two videos is open, then read frame by frame
+    while videoStatic.isOpened() or videoMoving.isOpened():
         
-    # movingNewCameraMtx, roi = cv.getOptimalNewCameraMatrix(mtxVideoMoving, distVideoMoving, (wMoving, hMoving), 1, (wMoving, hMoving))
+        # Get the frame from each video
+        ret1, frame1 = videoStatic.read()
+        ret2, frame2 = videoMoving.read()
 
-    print(staticNewCameraMtx)
-    print(roi)
-
-    while videoStatic.isOpened():
-        ret, frame = videoStatic.read()
-        
-        if not ret:
+        # If one of the two does not return a frame, then exit the loop
+        if not ret1 or not ret2:
             break
         
-        # Get undistortion
-        undistFrame = cv.undistort(frame, mtxVideoStatic, distVideoStatic, None, staticNewCameraMtx)
-        # ... and crop the image
-        x, y, w, h = roi
-        undistFrame = undistFrame[y:y+h, x:x+w]
-    
-        cv.imshow("Undistorted Video static", undistFrame)
+        # Apply the undistortion for both cameras
+        frame1 = applyUndistortion(frame1, mtxVideoStatic, distVideoStatic)
+        frame2 = applyUndistortion(frame2, mtxVideoMoving, distVideoMoving)
         
+        frame2 = cv.resize(frame2, (width, height))
+        frame = np.concatenate((frame1, frame2), axis = 1)
+        
+        cv.imshow("Frames", frame)
+
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
-    
-    # # While one of the two videos is open, then read frame by frame
-    # while videoStatic.isOpened() or videoMoving.isOpened():
-        
-    #     # Get the frame from each video
-    #     ret1, frame1 = videoStatic.read()
-    #     ret2, frame2 = videoMoving.read()
-
-    #     # If one of the two does not return a frame, then exit the loop
-    #     if not ret1 or not ret2:
-    #         break
-        
-    #     cv.imshow("Frames Static Camera", frame1)
-    #     cv.imshow("Frames Moving Camera", frame2)
-
-    #     # Press Q on the keyboard to exit.
-    #     if (cv.waitKey(25) & 0xFF == ord('q')):
-    #         break
 
     # Release videos
     videoStatic.release()
@@ -272,6 +249,15 @@ def synchroniseVideos(video1, video1Path, video2, video2Path):
         
         video1.set(cv.CAP_PROP_POS_FRAMES, 0)
         video2.set(cv.CAP_PROP_POS_FRAMES, frameCount)
+        
+def applyUndistortion(frame, mtx, dist):
+        
+    # Get undistortion
+    undistFrame = cv.undistort(frame, mtx, dist)
+        
+    # Lastly, return the undistorted frame
+    return undistFrame
+        
         
 # Main method call
 if __name__ == "__main__":
