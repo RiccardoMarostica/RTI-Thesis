@@ -43,8 +43,8 @@ def main():
     distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
     mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
     
-    height = int(videoStatic.get(cv.CAP_PROP_FRAME_HEIGHT))
-    width = int(videoStatic.get(cv.CAP_PROP_FRAME_WIDTH))
+    height = int(videoMoving.get(cv.CAP_PROP_FRAME_HEIGHT))
+    width = int(videoMoving.get(cv.CAP_PROP_FRAME_WIDTH))
     
     # While one of the two videos is open, then read frame by frame
     while videoStatic.isOpened() or videoMoving.isOpened():
@@ -61,8 +61,9 @@ def main():
         frame1 = applyUndistortion(frame1, mtxVideoStatic, distVideoStatic)
         frame2 = applyUndistortion(frame2, mtxVideoMoving, distVideoMoving)
         
-        frame2 = cv.resize(frame2, (width, height))
-        frame = np.concatenate((frame1, frame2), axis = 1)
+        # frame2 = cv.resize(frame2, (width, height))
+        frame1 = cv.resize(frame1, (width, height))
+        frame = np.concatenate((frame1, frame2), axis = 0)
         
         cv.imshow("Frames", frame)
 
@@ -213,26 +214,57 @@ def synchroniseVideos(video1, video1Path, video2, video2Path):
     
     helpers.consoleLog("Ended audio extraction", "SynchroniseVideos")
 
-    # Compute the cross-correlation of the left audio channels
-    corr = np.correlate(audio1[:, 0], audio2[:, 0], mode='full')
-    offset = corr.argmax() - (len(corr) // 2)
+    # Compute the cross-correlation of the left and right audio channels
+    corr_left = np.correlate(audio1[:, 0], audio2[:, 0], mode='full')
+    corr_right = np.correlate(audio1[:, 1], audio2[:, 1], mode='full')
+    
+    # Then, calculate the average of the audio using both left and right channels
+    audio1Avg = (audio1[:, 0] + audio1[:, 1]) / 2
+    audio2Avg = (audio2[:, 0] + audio2[:, 1]) / 2
+    # ... and from them calculate the average cross-correlation
+    corr_avg = np.correlate(audio1Avg, audio2Avg, mode="full")
+    
+    # Now, find the sample offset that maximizes the cross-correlation
+    offsets = np.arange(-len(audio2) + 1, len(audio1))
+    # Get the offset of the left channel and the right channel
+    offset_left = offsets[np.argmax(corr_left)]
+    offset_right = offsets[np.argmax(corr_right)]
+    # Then compute the average offset
+    offset_avg = offsets[np.argmax(corr_avg)]
+        
+    # Choose the best alignment based on the highest correlation value
+    if np.max(corr_left) >= np.max(corr_right) and np.max(corr_left) >= np.max(corr_avg):
+        helpers.consoleLog("Left audio channel is used to compute cross-correlation", "SynchroniseVideos")
+        offset = offset_left
+    elif np.max(corr_right) >= np.max(corr_left) and np.max(corr_right) >= np.max(corr_avg):
+        helpers.consoleLog("Right audio channel is used to compute cross-correlation", "SynchroniseVideos")
+        offset = offset_right
+    else:
+        helpers.consoleLog("Two channels are the same, so the average is used to compute cross-correlation", "SynchroniseVideos")
+        offset = offset_avg
 
     # Get offset in seconds
     offset_sec = offset / DEFAULT_SAMPLING_AUDIO_RATE
 
     helpers.consoleLog("Offset in seconds is: " + str(offset_sec), "SynchroniseVideos")
 
-    # Then, get the fps of both video, and check if the both are equal to the default fps rate
-    fpsVideo1 = int(round(video1.get(cv.CAP_PROP_FPS)))
-    fpsVideo2 = int(round(video2.get(cv.CAP_PROP_FPS)))
+    # Then, get the fps of both video, and check if they are equal
+    fpsVideo1 = video1.get(cv.CAP_PROP_FPS)
+    fpsVideo2 = video2.get(cv.CAP_PROP_FPS)
+    
+    # Get the default FPS, using the highest one
+    defaultFps = max(fpsVideo1, fpsVideo2)
 
-    # If one of them is not as the default fps rate, then modify the video
-    if (fpsVideo1 != DEFAULT_FPS_RATE or fpsVideo2 != DEFAULT_FPS_RATE):
-        # TODO: Aggiungere parte per modifica FPS del video
-        print("Different Video FPS")
-
+    # If the two videos have different frame per seconds, then it's necessary to adjust the FPS using the highest FPS
+    if (fpsVideo1 != fpsVideo2):
+        helpers.consoleLog("The two videos have different FPS", "SynchroniseVideos")
+        
+        # So set both videos with the default FPS value (highest one between the two FPS)
+        video1.set(cv.CAP_PROP_FPS, defaultFps)
+        video2.set(cv.CAP_PROP_FPS, defaultFps)
+        
     # Now, we can compute the frame count to shift the two videos
-    frameCount = abs(int(round(offset_sec * DEFAULT_FPS_RATE)))
+    frameCount = abs(int(round(offset_sec * defaultFps)))
 
     helpers.consoleLog("Frame difference between two videos is: " + str(frameCount), "SynchroniseVideos")
 
