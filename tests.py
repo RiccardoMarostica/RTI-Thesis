@@ -32,30 +32,81 @@ while video1.isOpened():
     # Then, let's find the contours of the black square marker
     contours, _ = cv.findContours(threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
     
-    contours = sorted(contours, key = cv.contourArea)
+    # contours = sorted(contours, key = cv.contourArea)
     
-    contour = contours[-2]
+    # contour = contours[-2]
     
-    epsilon = 0.1 * cv.arcLength(contour, True)
-    approxCorners = cv.approxPolyDP(contour, epsilon, True)
+    squareContour = max(contours, key = cv.contourArea)
     
-    distances = []
-    for i in range(len(approxCorners)):
-        j = (i + 1) % len(approxCorners)
-        distance = cv.norm(approxCorners[i][0], approxCorners[j][0])
-        distances.append(distance)
+    epsilon = 0.1 * cv.arcLength(squareContour, True)
+    approxCorners = cv.approxPolyDP(squareContour, epsilon, True)
     
-    minDistanceIndex = distances.index(min(distances))
-    x, y = approxCorners[minDistanceIndex][0]
+    corners = approxCorners.reshape(-1, 2)
+    
+    distances = [cv.norm(corners[i], corners[i+1]) for i in range(len(corners)-1)]
+    
+    minDistance = int(np.min(distances))
+    
+    print(minDistance)
+        
+    x, y =corners[0]
+
+    # Define ROI using coordinates of smallest circle and size of internal square
+    roi_x, roi_y, roi_w, roi_h = x, y, minDistance, minDistance
+    
+    roi = frame1[roi_y : (roi_y + roi_h), roi_x : (roi_x + roi_w)]
+    
+    # cv.imshow("FRAME", roi)
+    
+    # meanDistanceInner = meanDistance / 1.4
+    
+    # distances = []
+    # for i in range(len(approxCorners)):
+        
+    #     j = (i + 1) % len(approxCorners)
+    #     print(approxCorners[i][0], approxCorners[j][0])
+    #     frame1 = cv.line(frame1, (approxCorners[i][0][0], approxCorners[i][0][1]), (approxCorners[j][0][0], approxCorners[j][0][1]), (0, 255, 0), 3)
+        
+    #     distance = cv.norm(approxCorners[i][0], approxCorners[j][0])
+    #     distances.append(distance)
+        
+        
+    # cv.imshow("Frame", roi)
+    
+    # minDistanceIndex = distances.index(min(distances))
+    # x, y = approxCorners[minDistanceIndex][0]
+    
+    # frame1 = cv.circle(frame1, (x,y), 1, (0, 255, 0), 3)
+    
+    # # Define ROI using coordinates of smallest circle and size of internal square
+    # roi_x, roi_y, roi_w, roi_h = x, y, 670, 673
+    
+    # roi = frame1[roi_y : (roi_y + roi_h), (roi_x - roi_w) :roi_x]
+    
+    # Find the circles in the corners of the square
+    # corners = approxCorners.reshape(-1, 2)
+    # distances = [cv.norm(corners[i], corners[i+1]) for i in range(len(corners)-1)]
+    # min_distance_index = distances.index(min(distances))
+
+    # # Find the smallest circle in the left corner of the square
+    # (x, y), radius = cv.minEnclosingCircle(approxCorners[min_distance_index])
+    # circle = (int(x), int(y))
+
+    # Crop the frame to only include the ROI
+    # roi = frame1[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w]
+
+    # cv.imshow('ROI', frame1)
 
     mask = np.zeros_like(grayFrame)
     cv.fillPoly(mask, [approxCorners], (255, 255, 255))
     
-    dstPoints = np.array([ [0, 0], [480, 0], [480, 480], [0, 480]])
+    minDistanceInner = int(minDistance / 1.4)
     
-    homography = cv.findHomography(approxCorners, dstPoints)
+    dstPoints = np.array([ [0, 0], [0, minDistanceInner], [minDistanceInner, minDistanceInner], [minDistanceInner, 0]])
     
-    warped = cv.warpPerspective(frame1, homography[0], (480, 480))
+    homography = cv.findHomography(approxCorners, dstPoints, cv.RANSAC)
+    
+    warped = cv.warpPerspective(frame1, homography[0], (minDistanceInner, minDistanceInner))
     
     cv.imshow("Frame", warped)
     
