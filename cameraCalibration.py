@@ -61,6 +61,8 @@ def calibrateCamera(isStatic: bool):
         "calibrateCamera"
     )
 
+    frames = []
+
     # Loop over the VideoCapture until it becomes closed (at the end of the Video)
     while (videoCapture.isOpened()):
         # Read frame.
@@ -92,6 +94,8 @@ def calibrateCamera(isStatic: bool):
             milliseconds += 2000
             videoCapture.set(cv.CAP_PROP_POS_MSEC, milliseconds)
 
+            frames.append(frame)
+
             # Press Q on the keyboard to exit.
             if (cv.waitKey(25) & 0xFF == ord('q')):
                 break
@@ -117,32 +121,64 @@ def calibrateCamera(isStatic: bool):
         )
         exit(-1)
 
-    # Otherwise, we have all the information to perform camera calibration and retrieve the intrinsic and extrinsic parameters
-    # First, read the image containing the calibration pattern, and convert into grayscale
-    calibrationPattern = cv.imread("video/calibration_pattern.png", cv.IMREAD_GRAYSCALE)
-    
     # Parameters:
     # matrix -> 3x3 floating point camera intrinsic matrix (remember that scale is equal to 0 by default)
     # dist -> vector of distortion coefficients
     # rvecs -> vector of rotation vectors
     # tvecs -> vector of translation vectors
-    ret, matrix, dist, rvecs, tvecs = cv.calibrateCamera(objPoints, imgPoints, calibrationPattern.shape[::-1], None, None)
+    ret, matrix, dist, rvecs, tvecs = cv.calibrateCamera(objPoints, imgPoints, grayFrame.shape[::-1], None, None)
 
-    try:
+    axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
+
+    for pos in range(len(frames)):
         
-        # At the end, store the results in different files
-        # N.B: It's necessary to save only the intrinsic matrix and the distortion coeffs
-        np.savetxt(paramsPath + "intrinsicMatrix.dat", matrix)
-        np.savetxt(paramsPath + "distortionCoeffs.dat", dist)
+        frame = frames[pos]
+        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         
-        helpers.consoleLog("Camera parameters stored", "calibrateCamera")
+        ret, corners = cv.findChessboardCorners(gray, (9, 6), None)
         
-    except Exception as error:
-        print(str(error))
-        # An error occurred
-        helpers.consoleLog("An error occurred while storing the camera parameters", "calibrateCamera", True)
-        exit(-1)
+        if ret == True:
+            corners = cv.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+            
+            ret, rvecs, tvecs = cv.solvePnP(objPoint, corners, matrix, dist)
+            
+            imgpts, _ = cv.projectPoints(axis, rvecs, tvecs, matrix, dist)
+            
+            img = draw(frame, corners, imgpts)
+            cv.imshow("Frame", img)
+            
+            k = cv.waitKey(0) & 0xFF
+            if k == ord('s'):
+                cv.imwrite(str(pos) + ".jpg", img)
+                
+    cv.destroyAllWindows()
+            
+
+    # try:
         
+    #     # At the end, store the results in different files
+    #     # N.B: It's necessary to save only the intrinsic matrix and the distortion coeffs
+    #     np.savetxt(paramsPath + "intrinsicMatrix.dat", matrix)
+    #     np.savetxt(paramsPath + "distortionCoeffs.dat", dist)
+        
+    #     helpers.consoleLog("Camera parameters stored", "calibrateCamera")
+        
+    # except Exception as error:
+    #     print(str(error))
+    #     # An error occurred
+    #     helpers.consoleLog("An error occurred while storing the camera parameters", "calibrateCamera", True)
+    #     exit(-1)
+        
+def draw(img, corners, imgpts):
+    pt1 = tuple(corners[0].astype(int).ravel())
+    
+    for i in range(len(imgpts)):
+        pt2 = tuple(imgpts[i].astype(int).ravel())
+        img = cv.line(img, pt1, pt2, (255,0,0), 5)
+    
+    return img
+
+
 # Main method call
 if __name__ == "__main__":
     main()
