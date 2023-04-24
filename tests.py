@@ -112,15 +112,21 @@ while video1.isOpened() and video2.isOpened():
     # Define world camera
     world = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
 
-    # # Get the intrinsic parameters from static video
-    # mtxVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
-    # distVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
+    # Get the intrinsic parameters from static video
+    mtxVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
+    distVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
 
-    # # ... and retrieve extrinsic parameters
-    # rvec, tvec = findCameraExtrinsicsParameters(homographyStaticCamera[0], mtxVideoStatic)
+    # ... and retrieve extrinsic parameters
+    rvec, tvec = findCameraExtrinsicsParameters(homographyStaticCamera, mtxVideoStatic)
+    
+    u, s, v = np.linalg.svd(rvec)
+            
+    print(u, s, v)
+    
+    break
 
-    # axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
-    # imgpts, _ = cv.projectPoints(axis, rvec, tvec, mtxVideoStatic, distVideoStatic)
+    axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
+    imgpts, _ = cv.projectPoints(axis, rvec, tvec, mtxVideoStatic, distVideoStatic)
 
     # SIFT MATCH BETWEEN ROI AND MOVING CAMERA
     # Now, let's try to compute the features of each pov
