@@ -21,10 +21,10 @@ def main():
 
 def calibrateCamera(isStatic: bool):
     if isStatic:  # If param is true, then we compute parameters for the static camera
-        videoCapture = cv.VideoCapture("./video/cam-static/calibration.mp4")
+        videoCapture = cv.VideoCapture("./video/cam-static/calibration_riccardo.mp4")
         paramsPath = "parameters/static/"
     else:  # Otherwise, we compute parameters for moving camera
-        videoCapture = cv.VideoCapture("video/cam-moving/calibration.mp4")
+        videoCapture = cv.VideoCapture("video/cam-moving/calibration_riccardo.mp4")
         paramsPath = "parameters/moving/"
 
     # Video Capture has problem opening the Video stream, so close it
@@ -128,46 +128,46 @@ def calibrateCamera(isStatic: bool):
     # tvecs -> vector of translation vectors
     ret, matrix, dist, rvecs, tvecs = cv.calibrateCamera(objPoints, imgPoints, grayFrame.shape[::-1], None, None)
 
-    axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
+    # axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
 
-    for pos in range(len(frames)):
+    # for pos in range(len(frames)):
         
-        frame = frames[pos]
-        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    #     frame = frames[pos]
+    #     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         
-        ret, corners = cv.findChessboardCorners(gray, (9, 6), None)
+    #     ret, corners = cv.findChessboardCorners(gray, (9, 6), None)
         
-        if ret == True:
-            corners = cv.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+    #     if ret == True:
+    #         corners = cv.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             
-            ret, rvecs, tvecs = cv.solvePnP(objPoint, corners, matrix, dist)
+    #         ret, rvecs, tvecs = cv.solvePnP(objPoint, corners, matrix, dist)
             
-            imgpts, _ = cv.projectPoints(axis, rvecs, tvecs, matrix, dist)
+    #         imgpts, _ = cv.projectPoints(axis, rvecs, tvecs, matrix, dist)
             
-            img = draw(frame, corners, imgpts)
-            cv.imshow("Frame", img)
+    #         img = draw(frame, corners, imgpts)
+    #         cv.imshow("Frame", img)
             
-            k = cv.waitKey(0) & 0xFF
-            if k == ord('s'):
-                cv.imwrite(str(pos) + ".jpg", img)
+    #         k = cv.waitKey(0) & 0xFF
+    #         if k == ord('s'):
+    #             continue
                 
-    cv.destroyAllWindows()
+    # cv.destroyAllWindows()
             
 
-    # try:
+    try:
         
-    #     # At the end, store the results in different files
-    #     # N.B: It's necessary to save only the intrinsic matrix and the distortion coeffs
-    #     np.savetxt(paramsPath + "intrinsicMatrix.dat", matrix)
-    #     np.savetxt(paramsPath + "distortionCoeffs.dat", dist)
+        # At the end, store the results in different files
+        # N.B: It's necessary to save only the intrinsic matrix and the distortion coeffs
+        np.savetxt(paramsPath + "intrinsicMatrix.dat", matrix)
+        np.savetxt(paramsPath + "distortionCoeffs.dat", dist)
         
-    #     helpers.consoleLog("Camera parameters stored", "calibrateCamera")
+        helpers.consoleLog("Camera parameters stored", "calibrateCamera")
         
-    # except Exception as error:
-    #     print(str(error))
-    #     # An error occurred
-    #     helpers.consoleLog("An error occurred while storing the camera parameters", "calibrateCamera", True)
-    #     exit(-1)
+    except Exception as error:
+        print(str(error))
+        # An error occurred
+        helpers.consoleLog("An error occurred while storing the camera parameters", "calibrateCamera", True)
+        exit(-1)
         
 def draw(img, corners, imgpts):
     pt1 = tuple(corners[0].astype(int).ravel())

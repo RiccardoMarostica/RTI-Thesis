@@ -8,11 +8,11 @@ os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg/5.1.2_5/bin/ffmp
 from constants import *
 
 # Load the two videos and extract their audio
-video1 = cv.VideoCapture('./video/cam-static/coin2.mp4')
-audio1 = mp.AudioFileClip('./video/cam-static/coin2.mp4')
+video1 = cv.VideoCapture('./video/cam-static/paper.mp4')
+audio1 = mp.AudioFileClip('./video/cam-static/paper.mp4')
 
-video2 = cv.VideoCapture('./video/cam-moving/coin2.mp4')
-audio2 = mp.AudioFileClip('./video/cam-moving/coin2.mp4')
+video2 = cv.VideoCapture('./video/cam-moving/paper.mp4')
+audio2 = mp.AudioFileClip('./video/cam-moving/paper.mp4')
 
 # Now, get the inital 5 seconds in order to calculate the offset.
 # From these 5 seconds, retrieve the sound array and convert their values using as sampling rate 44100 Hz.

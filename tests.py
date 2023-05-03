@@ -11,7 +11,8 @@ video2 = cv.VideoCapture(MOVING_VIDEO_FILE_PATH)
 video1.set(cv.CAP_PROP_FPS, 30)
 video2.set(cv.CAP_PROP_FPS, 30)
 
-video1.set(cv.CAP_PROP_POS_FRAMES, 82)
+video1.set(cv.CAP_PROP_POS_FRAMES, 25)
+video1.set(cv.CAP_PROP_POS_FRAMES, 0)
 
 points = []
 
@@ -26,33 +27,48 @@ bf = cv.BFMatcher()
 # Initialize FLANN-based matcher
 flann = cv.FlannBasedMatcher_create()
 
-
 def getPointFromImage(event, x, y, flags, params):
     if event == cv.EVENT_LBUTTONDOWN:
         points.append(np.array((x, y), dtype=np.float32))
         print("Point added")
     pass
 
+    
+def applyUndistortion(frame, mtx, dist):
+        
+    # Get undistortion
+    undistFrame = cv.undistort(frame, mtx, dist)
+        
+    # Lastly, return the undistorted frame
+    return undistFrame
+
 # H -> Homography
 # K -> Intrinsic Parameters of the camera
 # The function computes the extrinsic parameters using the homography and intrinsic parameters array.
 # At the end, it returns the derived rotation and translation vectors
-
-
 def findCameraExtrinsicsParameters(H, K):
-    H = H.T                                         # Get the transpose of the Homography
-    K_inverse = np.linalg.inv(K)                    # Get the inverse of the intrisinc parameters
-    h1 = H[0]                                       # First column of the Homography
-    h2 = H[1]                                       # Second column
-    h3 = H[2]                                       # Third column
-    L = 1 / np.linalg.norm(np.dot(K_inverse, h1))   # Scale factor
-    r1 = L * np.dot(K_inverse, h1)                  #  Rotation matrix first column
-    r2 = L * np.dot(K_inverse, h2)                  #  Rotation matrix second column
-    r3 = np.cross(r1, r2)                           #  Rotation matrix third column
-    T = L * (K_inverse @ h3.reshape(3, 1))          # Get the translation vector
-    R = np.array([[r1], [r2], [r3]])                #  Get the rotation matrix
+    H = H.T                                             # Get the transpose of the Homography
+    K_inverse = np.linalg.inv(K)                        # Get the inverse of the intrisinc parameters
+    h1 = H[0]                                           # First column of the Homography
+    h2 = H[1]                                           # Second column
+    h3 = H[2]                                           # Third column
+    alpha = 1 / np.linalg.norm(np.dot(K_inverse, h1))   # Scale factor
+    r1 = alpha * np.dot(K_inverse, h1)                  #  Rotation matrix first column
+    r2 = alpha * np.dot(K_inverse, h2)                  #  Rotation matrix second column
+    r3 = np.cross(r1, r2)                               #  Rotation matrix third column
+    T = alpha * (K_inverse @ h3.reshape(3, 1))          # Get the translation vector
+    R = np.array([[r1], [r2], [r3]])                    #  Get the rotation matrix
     R = np.reshape(R, (3, 3))
-    return R, T                                     # Return extrinsic parameters
+    return R, T                                         # Return extrinsic parameters
+
+
+
+# Get the distortion params from the file (for moving camera)
+distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
+mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
+
+distVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
+mtxVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
 
 
 while video1.isOpened() and video2.isOpened():
@@ -109,36 +125,23 @@ while video1.isOpened() and video2.isOpened():
         cv.destroyWindow("Point detection")
         hasDestroyedPointsWindow = True
 
+    staticFrame = applyUndistortion(staticFrame, mtxVideoStatic, distVideoStatic)
+    movingFrame = applyUndistortion(movingFrame, mtxVideoMoving, distVideoMoving)
+
     # Define world camera
     world = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
-
-    # Get the intrinsic parameters from static video
-    mtxVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
-    distVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
-
-    # ... and retrieve extrinsic parameters
-    rvec, tvec = findCameraExtrinsicsParameters(homographyStaticCamera, mtxVideoStatic)
-    
-    u, s, v = np.linalg.svd(rvec)
-            
-    print(u, s, v)
-    
-    break
-
-    axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
-    imgpts, _ = cv.projectPoints(axis, rvec, tvec, mtxVideoStatic, distVideoStatic)
 
     # SIFT MATCH BETWEEN ROI AND MOVING CAMERA
     # Now, let's try to compute the features of each pov
     kpStatic, desStatic = sift.detectAndCompute(world, None)
     kpMoving, desMoving = sift.detectAndCompute(movingFrame, None)
 
-    # matches = bf.knnMatch(desROI, desMoving, k = 2)
+    # matches = bf.knnMatch(desStatic, desMoving, k = 2)
     matches = flann.knnMatch(desStatic, desMoving, k=2)
 
     goodMatches = []
     for m1, m2 in matches:
-        if m1.distance < 0.7 * m2.distance:
+        if m1.distance < 0.6 * m2.distance:
             goodMatches.append(m1)
 
     print("Matched points", len(goodMatches))
@@ -150,22 +153,23 @@ while video1.isOpened() and video2.isOpened():
         dstPoints = np.float32([kpStatic[m.trainIdx].pt for m in goodMatches]).reshape(-1, 1, 2)
 
         # # Now we compute the Homography between the Moving and Static Camera
-        homographyStaticMoving, _ = cv.findHomography(srcPoints, dstPoints)
+        homographyStaticMoving, _ = cv.findHomography(srcPoints, dstPoints, cv.RANSAC, 5.0)
 
-        if homographyStaticMoving is not None:
-            # Get the distortion params from the file (for moving camera)
-            distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
-            mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
+        # if homographyStaticMoving is not None:
+         
+        #     # Get the distortion params from the file (for moving camera)
+        #     distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
+        #     mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
             
-            # ... and retrieve extrinsic parameters
-            rvec, tvec = findCameraExtrinsicsParameters(homographyStaticMoving, mtxVideoMoving)
+        #     # ... and retrieve extrinsic parameters
+        #     rvec, tvec = findCameraExtrinsicsParameters(homographyStaticMoving, mtxVideoMoving)
             
-            axis = np.float32([[3, 0, 0], [0, 3, 0], [0, 0, -3]]).reshape(-1, 3)
-            imgpts, _ = cv.projectPoints(axis, rvec, tvec, mtxVideoMoving, distVideoMoving)
+        #     axis = np.float32([[3, 0, 0], [0, 3, 0], [0, 0, -3]]).reshape(-1, 3)
+        #     imgpts, _ = cv.projectPoints(axis, rvec, tvec, mtxVideoMoving, distVideoMoving)
             
-            # img = cv.line(movingFrame, (0,0), tuple(imgpts[0].ravel().astype(int)), (255,0,0), 5)
-            # img = cv.line(movingFrame, (0,0), tuple(imgpts[1].ravel().astype(int)), (0,255,0), 5)
-            # img = cv.line(movingFrame, (0,0), tuple(imgpts[2].ravel().astype(int)), (0,0,255), 5)
+        #     img = cv.line(movingFrame, (0,0), tuple(imgpts[0].ravel().astype(int)), (255,0,0), 5)
+        #     img = cv.line(movingFrame, (0,0), tuple(imgpts[1].ravel().astype(int)), (0,255,0), 5)
+        #     img = cv.line(movingFrame, (0,0), tuple(imgpts[2].ravel().astype(int)), (0,0,255), 5)
 
     siftMatches = cv.drawMatches(world, kpStatic, movingFrame, kpMoving, goodMatches, None, flags=2)
 
@@ -180,6 +184,7 @@ video1.release()
 
 # And destroy windows
 cv.destroyAllWindows()
+
 
 
 # TEST WITH FIDUAL MARKER TO FIND
