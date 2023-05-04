@@ -22,7 +22,7 @@ hasDestroyedPointsWindow = False
 
 # Initiate SIFT detector
 sift = cv.SIFT_create()
-bf = cv.BFMatcher()
+# bf = cv.BFMatcher()
 
 # Initialize FLANN-based matcher
 flann = cv.FlannBasedMatcher_create()
@@ -61,15 +61,12 @@ def findCameraExtrinsicsParameters(H, K):
     R = np.reshape(R, (3, 3))
     return R, T                                         # Return extrinsic parameters
 
-
-
 # Get the distortion params from the file (for moving camera)
 distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
 mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
 
 distVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
 mtxVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
-
 
 while video1.isOpened() and video2.isOpened():
     # Get each frame of the video
@@ -109,6 +106,10 @@ while video1.isOpened() and video2.isOpened():
 
             # Now we compute the Homography between the World and the Static Camera
             homographyStaticCamera, _ = cv.findHomography(np.array(points), destinationPoints)
+            
+            rvecStatic, tvecStatic = findCameraExtrinsicsParameters(homographyStaticCamera, mtxVideoStatic)
+            
+            print(rvecStatic, tvecStatic)
 
             # Set that the key points has been found and stored
             hasFoundPoints = True
@@ -129,19 +130,18 @@ while video1.isOpened() and video2.isOpened():
     movingFrame = applyUndistortion(movingFrame, mtxVideoMoving, distVideoMoving)
 
     # Define world camera
-    world = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
+    staticFrame = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
 
     # SIFT MATCH BETWEEN ROI AND MOVING CAMERA
     # Now, let's try to compute the features of each pov
-    kpStatic, desStatic = sift.detectAndCompute(world, None)
+    kpStatic, desStatic = sift.detectAndCompute(staticFrame, None)
     kpMoving, desMoving = sift.detectAndCompute(movingFrame, None)
 
-    # matches = bf.knnMatch(desStatic, desMoving, k = 2)
     matches = flann.knnMatch(desStatic, desMoving, k=2)
 
     goodMatches = []
     for m1, m2 in matches:
-        if m1.distance < 0.6 * m2.distance:
+        if m1.distance < 0.7 * m2.distance:
             goodMatches.append(m1)
 
     print("Matched points", len(goodMatches))
@@ -155,23 +155,26 @@ while video1.isOpened() and video2.isOpened():
         # # Now we compute the Homography between the Moving and Static Camera
         homographyStaticMoving, _ = cv.findHomography(srcPoints, dstPoints, cv.RANSAC, 5.0)
 
-        # if homographyStaticMoving is not None:
-         
-        #     # Get the distortion params from the file (for moving camera)
-        #     distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
-        #     mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
+        if homographyStaticMoving is not None:
+            _, rvecMoving, tvecMoving, N = cv.decomposeHomographyMat(homographyStaticMoving, mtxVideoMoving)
             
-        #     # ... and retrieve extrinsic parameters
-        #     rvec, tvec = findCameraExtrinsicsParameters(homographyStaticMoving, mtxVideoMoving)
+            # print(rvecMoving, tvecMoving)
+            rvecMoving = np.array(rvecMoving, dtype=np.float32)
+            print(rvecMoving)            
             
-        #     axis = np.float32([[3, 0, 0], [0, 3, 0], [0, 0, -3]]).reshape(-1, 3)
-        #     imgpts, _ = cv.projectPoints(axis, rvec, tvec, mtxVideoMoving, distVideoMoving)
+            yaw, pitch, roll = cv.RQDecomp3x3(rvecMoving[0])[0]
             
-        #     img = cv.line(movingFrame, (0,0), tuple(imgpts[0].ravel().astype(int)), (255,0,0), 5)
-        #     img = cv.line(movingFrame, (0,0), tuple(imgpts[1].ravel().astype(int)), (0,255,0), 5)
-        #     img = cv.line(movingFrame, (0,0), tuple(imgpts[2].ravel().astype(int)), (0,0,255), 5)
+            # Print camera poses
+            print("Translation vector (camera 1 to camera 2):", tvecMoving)
+            print("Rotation angles (camera 1 to camera 2):", yaw, pitch, roll)
+            
+            # movingFrame = cv.warpPerspective(movingFrame, homographyStaticMoving, (staticFrame.shape[1], staticFrame.shape[0]))
+            
+            # rvecMoving, tvecMoving = findCameraExtrinsicsParameters(homographyStaticMoving, mtxVideoMoving)
+            
+            # print(rvecMoving, tvecMoving)
 
-    siftMatches = cv.drawMatches(world, kpStatic, movingFrame, kpMoving, goodMatches, None, flags=2)
+    siftMatches = cv.drawMatches(staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, flags=2)
 
     cv.imshow("SIFT Matches", siftMatches)
 
@@ -181,6 +184,7 @@ while video1.isOpened() and video2.isOpened():
 
 # Release videos
 video1.release()
+video2.release()
 
 # And destroy windows
 cv.destroyAllWindows()
