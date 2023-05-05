@@ -11,7 +11,7 @@ video2 = cv.VideoCapture(MOVING_VIDEO_FILE_PATH)
 video1.set(cv.CAP_PROP_FPS, 30)
 video2.set(cv.CAP_PROP_FPS, 30)
 
-video1.set(cv.CAP_PROP_POS_FRAMES, 25)
+video1.set(cv.CAP_PROP_POS_FRAMES, 33)
 video1.set(cv.CAP_PROP_POS_FRAMES, 0)
 
 points = []
@@ -107,9 +107,9 @@ while video1.isOpened() and video2.isOpened():
             # Now we compute the Homography between the World and the Static Camera
             homographyStaticCamera, _ = cv.findHomography(np.array(points), destinationPoints)
             
-            rvecStatic, tvecStatic = findCameraExtrinsicsParameters(homographyStaticCamera, mtxVideoStatic)
+            # rvecStatic, tvecStatic = findCameraExtrinsicsParameters(homographyStaticCamera, mtxVideoStatic)
             
-            print(rvecStatic, tvecStatic)
+            # print(rvecStatic, tvecStatic)
 
             # Set that the key points has been found and stored
             hasFoundPoints = True
@@ -126,8 +126,8 @@ while video1.isOpened() and video2.isOpened():
         cv.destroyWindow("Point detection")
         hasDestroyedPointsWindow = True
 
-    staticFrame = applyUndistortion(staticFrame, mtxVideoStatic, distVideoStatic)
-    movingFrame = applyUndistortion(movingFrame, mtxVideoMoving, distVideoMoving)
+    # staticFrame = applyUndistortion(staticFrame, mtxVideoStatic, distVideoStatic)
+    # movingFrame = applyUndistortion(movingFrame, mtxVideoMoving, distVideoMoving)
 
     # Define world camera
     staticFrame = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
@@ -145,34 +145,25 @@ while video1.isOpened() and video2.isOpened():
             goodMatches.append(m1)
 
     print("Matched points", len(goodMatches))
-
+    
     # Here at this point, after computing the good matches we can try to compute the homography H21 (Moving with Static)
-    if len(goodMatches) > 10:
+    if len(goodMatches) > 50:
 
         srcPoints = np.float32([kpStatic[m.queryIdx].pt for m in goodMatches]).reshape(-1, 1, 2)
-        dstPoints = np.float32([kpStatic[m.trainIdx].pt for m in goodMatches]).reshape(-1, 1, 2)
+        dstPoints = np.float32([kpMoving[m.trainIdx].pt for m in goodMatches]).reshape(-1, 1, 2)
 
         # # Now we compute the Homography between the Moving and Static Camera
         homographyStaticMoving, _ = cv.findHomography(srcPoints, dstPoints, cv.RANSAC, 5.0)
-
-        if homographyStaticMoving is not None:
-            _, rvecMoving, tvecMoving, N = cv.decomposeHomographyMat(homographyStaticMoving, mtxVideoMoving)
-            
-            # print(rvecMoving, tvecMoving)
-            rvecMoving = np.array(rvecMoving, dtype=np.float32)
-            print(rvecMoving)            
-            
-            yaw, pitch, roll = cv.RQDecomp3x3(rvecMoving[0])[0]
-            
-            # Print camera poses
-            print("Translation vector (camera 1 to camera 2):", tvecMoving)
-            print("Rotation angles (camera 1 to camera 2):", yaw, pitch, roll)
-            
-            # movingFrame = cv.warpPerspective(movingFrame, homographyStaticMoving, (staticFrame.shape[1], staticFrame.shape[0]))
-            
-            # rvecMoving, tvecMoving = findCameraExtrinsicsParameters(homographyStaticMoving, mtxVideoMoving)
-            
-            # print(rvecMoving, tvecMoving)
+        # if homographyStaticMoving is not None:
+        #     H = homographyStaticCamera @ homographyStaticMoving
+        
+        # movingFrame = cv.warpPerspective(movingFrame, homographyStaticMoving, (movingFrame.shape[1], movingFrame.shape[0]))    
+    
+    # cv.imshow("Moving frame",movingFrame)
+    
+    # world = cv.warpPerspective(movingFrame, H, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
+    
+    # cv.imshow("Homography frames", world)
 
     siftMatches = cv.drawMatches(staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, flags=2)
 
@@ -188,138 +179,3 @@ video2.release()
 
 # And destroy windows
 cv.destroyAllWindows()
-
-
-
-# TEST WITH FIDUAL MARKER TO FIND
-# # While one of the two videos is open, then read frame by frame
-# while video1.isOpened():
-
-#     # Get the frame from each video
-#     ret1, frame1 = video1.read()
-
-#     # If one of the two does not return a frame, then exit the loop
-#     if not ret1:
-#         break
-
-#     # Convert the frame in grayscale
-#     grayFrame = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
-
-#     # Now, let's apply the threshold to the frame
-#     _, threshold = cv.threshold(grayFrame, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
-
-#     # Then, let's find the contours of the black square marker
-#     contours, _ = cv.findContours(threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-
-#     contours = sorted(contours, key = cv.contourArea)
-
-#     squareContour = contours[-2]
-
-#     # # squareContour = max(contours, key = cv.contourArea)
-
-#     epsilon = 0.1 * cv.arcLength(squareContour, True)
-#     approxCorners = cv.approxPolyDP(squareContour, epsilon, True)
-
-#     corners = approxCorners.reshape(-1, 2)
-
-#     frame1 = cv.rectangle(frame1, corners[0], corners[2], (0, 255, 0), 3)
-
-#     distances = [cv.norm(corners[i], corners[i+1]) for i in range(len(corners)-1)]
-
-#     minDistance = int(np.min(distances))
-#     # Find the smallest value for the first position of the nested arrays
-#     x = np.amin(corners, axis=0)[0]
-
-#     # Find the smallest value for the second position of the nested arrays
-#     y = np.amin(corners, axis=0)[1]
-
-#     # x, y =corners[0]
-
-#     # Define ROI using coordinates of smallest circle and size of internal square
-#     roi_x, roi_y, roi_w, roi_h = x, y, minDistance, minDistance
-
-#     roi = frame1[roi_y : (roi_y + roi_h), roi_x : (roi_x + roi_w)]
-
-#     cv.putText(roi, "X, Y: " + str(x) + ", " + str(y), (50, 50), fontFace = cv.FONT_HERSHEY_SIMPLEX, fontScale = 1, color = (0, 255, 0), thickness = 3)
-
-#     # cv.imshow("FRAME", roi)
-
-#     mask = np.zeros_like(grayFrame)
-#     cv.fillPoly(mask, [corners], (255, 255, 255))
-
-#     minDistanceInner = minDistance
-
-#     dstPoints = np.array([ [0, 0], [0, minDistanceInner], [minDistanceInner, minDistanceInner], [minDistanceInner, 0]])
-
-#     homography = cv.findHomography(corners, dstPoints, cv.RANSAC)
-
-#     worldImage = cv.warpPerspective(frame1, homography[0], (minDistanceInner, minDistanceInner))
-
-#     cv.imshow("World", worldImage)
-
-#     # distances = []
-#     # for i in range(len(approxCorners)):
-
-#     #     j = (i + 1) % len(approxCorners)
-#     #     print(approxCorners[i][0], approxCorners[j][0])
-#     #     frame1 = cv.line(frame1, (approxCorners[i][0][0], approxCorners[i][0][1]), (approxCorners[j][0][0], approxCorners[j][0][1]), (0, 255, 0), 3)
-
-#     #     distance = cv.norm(approxCorners[i][0], approxCorners[j][0])
-#     #     distances.append(distance)
-
-
-#     # cv.imshow("Frame", roi)
-
-#     # minDistanceIndex = distances.index(min(distances))
-#     # x, y = approxCorners[minDistanceIndex][0]
-
-#     # frame1 = cv.circle(frame1, (x,y), 1, (0, 255, 0), 3)
-
-#     # # Define ROI using coordinates of smallest circle and size of internal square
-#     # roi_x, roi_y, roi_w, roi_h = x, y, 670, 673
-
-#     # roi = frame1[roi_y : (roi_y + roi_h), (roi_x - roi_w) :roi_x]
-
-#     # Find the circles in the corners of the square
-#     # corners = approxCorners.reshape(-1, 2)
-#     # distances = [cv.norm(corners[i], corners[i+1]) for i in range(len(corners)-1)]
-#     # min_distance_index = distances.index(min(distances))
-
-#     # # Find the smallest circle in the left corner of the square
-#     # (x, y), radius = cv.minEnclosingCircle(approxCorners[min_distance_index])
-#     # circle = (int(x), int(y))
-
-#     # Crop the frame to only include the ROI
-#     # roi = frame1[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w]
-
-#     # cv.imshow('ROI', frame1)
-
-#     mask = np.zeros_like(grayFrame)
-#     cv.fillPoly(mask, [approxCorners], (255, 255, 255))
-
-#     minDistanceInner = int(minDistance / 1.4)
-
-#     dstPoints = np.array([ [0, 0], [0, minDistanceInner], [minDistanceInner, minDistanceInner], [minDistanceInner, 0]])
-
-#     homography = cv.findHomography(approxCorners, dstPoints, cv.RANSAC)
-
-#     worldImage = cv.warpPerspective(frame1, homography[0], (minDistanceInner, minDistanceInner))
-
-#     # grayWorldImage = cv.cvtColor(worldImage, cv.COLOR_BGR2GRAY)
-
-#     # sift = cv.SIFT_create()
-#     # keypoints = sift.detect(grayWorldImage, None)
-
-#     # worldImage = cv.drawKeypoints(grayWorldImage, keypoints, worldImage)
-
-#     # cv.imshow("Frame", worldImage)
-
-#     # Press Q on the keyboard to exit.
-#     if (cv.waitKey(25) & 0xFF == ord('q')):
-#         break
-
-# # Release videos
-# video1.release()
-
-# # And destroy windows
-# cv.destroyAllWindows()
