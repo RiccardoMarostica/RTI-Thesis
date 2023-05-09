@@ -3,6 +3,7 @@ import numpy as np
 import cv2 as cv
 import moviepy.editor as mp
 import os
+import time
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg/5.1.2_5/bin/ffmpeg"
 
 from constants import *
@@ -29,17 +30,20 @@ offset_sec = offset / DEFAULT_SAMPLING_AUDIO_RATE
 
 print("Offset in seconds: ", offset_sec)
 
-# Then, get the fps of both video, and check if the both are equal to the default fps rate
-fpsVideo1 = int(round(video1.get(cv.CAP_PROP_FPS)))
-fpsVideo2 = int(round(video2.get(cv.CAP_PROP_FPS)))
+# Then, get the fps of both video, and check if they are equal
+fpsVideo1 = video1.get(cv.CAP_PROP_FPS)
+fpsVideo2 = video2.get(cv.CAP_PROP_FPS)
+    
+# Get the default FPS, using the highest one
+defaultFps = max(fpsVideo1, fpsVideo2)
 
-# If one of them is not as the default fps rate, then modify the video
-if (fpsVideo1 != DEFAULT_FPS_RATE or fpsVideo2 != DEFAULT_FPS_RATE):
-    # TODO: Aggiungere parte per modifica FPS del video
-    print("Different Video FPS")
+# # If one of them is not as the default fps rate, then modify the video
+# if (fpsVideo1 != DEFAULT_FPS_RATE or fpsVideo2 != DEFAULT_FPS_RATE):
+#     # TODO: Aggiungere parte per modifica FPS del video
+#     print("Different Video FPS")
 
 # Now, we can compute the frame count to shift the two videos
-frameCount = abs(int(round(offset_sec * DEFAULT_FPS_RATE)))
+frameCount = abs(int(round(offset_sec * defaultFps)))
 
 print("Frame difference: ", frameCount)
 
@@ -57,8 +61,12 @@ elif offset < 0:
     video1.set(cv.CAP_PROP_POS_FRAMES, 0)
     video2.set(cv.CAP_PROP_POS_FRAMES, frameCount)
 
+previousTime = 0
+
 # While one of the two videos is open, then read frame by frame
 while video1.isOpened() or video2.isOpened():
+
+    time_elapsed = time.time() - previousTime
     
     # Get the frame from each video
     ret1, frame1 = video1.read()
@@ -68,8 +76,11 @@ while video1.isOpened() or video2.isOpened():
     if not ret1 or not ret2:
         break
     
-    cv.imshow("Frames Video 1", frame1)
-    cv.imshow("Frames Video 2", frame2)
+    if time_elapsed > 1./DEFAULT_FPS_RATE:
+        previousTime = time.time()
+    
+        cv.imshow("Frames Video 1", frame1)
+        cv.imshow("Frames Video 2", frame2)
 
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):

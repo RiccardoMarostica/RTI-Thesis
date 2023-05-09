@@ -3,6 +3,7 @@ import numpy as np
 import functions.helpers as helpers
 import moviepy.editor as mp
 import os
+import time
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg/5.1.2_5/bin/ffmpeg"
 
 from constants import *
@@ -10,15 +11,15 @@ from constants import *
 # Define main function to calibrate both camera parameters
 def main():
     
-    helpers.consoleLog("Starting camera calibrations", "MAIN")
+    # helpers.consoleLog("Starting camera calibrations", "MAIN")
     
-    # First, calibrate the static camera
-    calibrateCamera(True)
+    # # First, calibrate the static camera
+    # calibrateCamera(True)
 
-    # Then calibrate the moving camera    
-    calibrateCamera(False)
+    # # Then calibrate the moving camera    
+    # calibrateCamera(False)
     
-    helpers.consoleLog("Ended camera calibrations", "MAIN")
+    # helpers.consoleLog("Ended camera calibrations", "MAIN")
     
     # # After retrieving the parameters of the camera, let's compute the offset between the two videos    
     # # Get the videos
@@ -35,19 +36,23 @@ def main():
     # To do so, we need to use the undistortion values obtained in the previous step (camera calibration)
     # Apply the corresponding array to the proper video (for each frame) to remove any distortion
     
-    # Get the distortion params from the file (for static camera)
-    distVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
-    mtxVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
+    # # Get the distortion params from the file (for static camera)
+    # distVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
+    # mtxVideoStatic = np.loadtxt(STATIC_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
     
-    # Get the distortion params from the file (for moving camera)
-    distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
-    mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
+    # # Get the distortion params from the file (for moving camera)
+    # distVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "distortionCoeffs.dat")
+    # mtxVideoMoving = np.loadtxt(MOVING_VIDEO_PARAMS_PATH + "intrinsicMatrix.dat")
     
     height = int(videoMoving.get(cv.CAP_PROP_FRAME_HEIGHT))
     width = int(videoMoving.get(cv.CAP_PROP_FRAME_WIDTH))
+
+    previousTime = 0
     
     # While one of the two videos is open, then read frame by frame
     while videoStatic.isOpened() or videoMoving.isOpened():
+            
+        time_elapsed = time.time() - previousTime
         
         # Get the frame from each video
         ret1, frame1 = videoStatic.read()
@@ -57,15 +62,18 @@ def main():
         if not ret1 or not ret2:
             break
         
-        # Apply the undistortion for both cameras
-        frame1 = applyUndistortion(frame1, mtxVideoStatic, distVideoStatic)
-        frame2 = applyUndistortion(frame2, mtxVideoMoving, distVideoMoving)
-        
-        # frame2 = cv.resize(frame2, (width, height))
-        frame1 = cv.resize(frame1, (width, height))
-        frame = np.concatenate((frame1, frame2), axis = 0)
-        
-        cv.imshow("Frames", frame)
+        if time_elapsed > 1./DEFAULT_FPS_RATE:
+            previousTime = time.time()
+    
+            # Apply the undistortion for both cameras
+            # frame1 = applyUndistortion(frame1, mtxVideoStatic, distVideoStatic)
+            # frame2 = applyUndistortion(frame2, mtxVideoMoving, distVideoMoving)
+                
+            # frame2 = cv.resize(frame2, (width, height))
+            frame1 = cv.resize(frame1, (width, height))
+            frame = np.concatenate((frame1, frame2), axis = 0)
+            
+            cv.imshow("Frames", frame)
 
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
@@ -254,14 +262,6 @@ def synchroniseVideos(video1, video1Path, video2, video2Path):
     
     # Get the default FPS, using the highest one
     defaultFps = max(fpsVideo1, fpsVideo2)
-
-    # If the two videos have different frame per seconds, then it's necessary to adjust the FPS using the highest FPS
-    if (fpsVideo1 != fpsVideo2):
-        helpers.consoleLog("The two videos have different FPS", "SynchroniseVideos")
-        
-        # So set both videos with the default FPS value (highest one between the two FPS)
-        video1.set(cv.CAP_PROP_FPS, defaultFps)
-        video2.set(cv.CAP_PROP_FPS, defaultFps)
         
     # Now, we can compute the frame count to shift the two videos
     frameCount = abs(int(round(offset_sec * defaultFps)))
