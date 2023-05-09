@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
-
 from constants import *
+import time
 
 def getPointFromImage(event, x, y, flags, params):
     if event == cv.EVENT_LBUTTONDOWN:
@@ -86,16 +86,6 @@ def retrieveROI(video):
 video1 = cv.VideoCapture(STATIC_VIDEO_FILE_PATH)
 video2 = cv.VideoCapture(MOVING_VIDEO_FILE_PATH)
 
-print("Video 1 FPS: ", video1.get(cv.CAP_PROP_FPS))
-print("Video 2 FPS: ", video2.get(cv.CAP_PROP_FPS))
-
-# Set same frame rate
-video1.set(cv.CAP_PROP_FPS, DEFAULT_FPS_RATE)
-video2.set(cv.CAP_PROP_FPS, DEFAULT_FPS_RATE)
-
-print("Video 1 FPS: ", video1.get(cv.CAP_PROP_FPS))
-print("Video 2 FPS: ", video2.get(cv.CAP_PROP_FPS))
-
 # Initiate SIFT detector and FLANN Matcher for feature detection and matching between the two cameras
 sift = cv.SIFT_create()
 flann = cv.FlannBasedMatcher_create()
@@ -111,7 +101,13 @@ if homographyStaticCamera is None:
 video1.set(cv.CAP_PROP_POS_FRAMES, 33)
 video2.set(cv.CAP_PROP_POS_FRAMES, 0)
 
+previousTime = 0
+
 while video1.isOpened() and video2.isOpened():
+    
+    # Get time elapsed between now and previous iteration
+    time_elapsed = time.time() - previousTime
+    
     # Get each frame of the video
     staticRet, staticFrame = video1.read()
     movingRet, movingFrame = video2.read()
@@ -119,91 +115,79 @@ while video1.isOpened() and video2.isOpened():
     if staticRet != True or movingRet != True:
         break
 
-    # Convert to grayscale
-    staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
-    movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
+    if time_elapsed > 1./DEFAULT_FPS_RATE:
+        previousTime = time.time()
+        
+        # Convert to grayscale
+        staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
+        movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
 
-    # Define world camera
-    staticFrame = cv.warpPerspective(
-        staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
+        # Define world camera
+        staticFrame = cv.warpPerspective(
+            staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
 
-    # SIFT MATCH BETWEEN ROI AND MOVING CAMERA
-    # Now, let's try to compute the features of each pov
-    kpStatic, desStatic = sift.detectAndCompute(staticFrame, None)
-    kpMoving, desMoving = sift.detectAndCompute(movingFrame, None)
+        # Now, let's try to compute the features of each pov
+        kpStatic, desStatic = sift.detectAndCompute(staticFrame, None)
+        kpMoving, desMoving = sift.detectAndCompute(movingFrame, None)
 
-    matches = flann.knnMatch(desStatic, desMoving, k=2)
+        # Perform feature matching using KNN (K-Nearest-Neighborhood) technique
+        matches = flann.knnMatch(desStatic, desMoving, k=2)
 
-    goodMatches = []
-    for m1, m2 in matches:
-        if m1.distance < 0.75 * m2.distance:
-            goodMatches.append(m1)
+        # Retrieve the good matches, to eliminate the outliers
+        goodMatches = []
+        for m1, m2 in matches:
+            if m1.distance < 0.7 * m2.distance:
+                goodMatches.append(m1)
 
-    print("Matched points", len(goodMatches))
+        print("Matched points", len(goodMatches))
 
-    # Here at this point, after computing the good matches we can try to compute the homography H21 (Moving with Static)
-    if len(goodMatches) > MIN_MATCH_COUNT:
-        srcPoints = np.float32([
-            kpStatic[m.queryIdx].pt for m in goodMatches
-        ]).reshape(-1, 1, 2)
-        dstPoints = np.float32([
-            kpMoving[m.trainIdx].pt for m in goodMatches
-        ]).reshape(-1, 1, 2)
+        # Here at this point, after computing the good matches we can try to compute the homography H21 (Moving with Static)
+        if len(goodMatches) > MIN_MATCH_COUNT:
+            srcPoints = np.float32([
+                kpStatic[m.queryIdx].pt for m in goodMatches
+            ]).reshape(-1, 1, 2)
+            dstPoints = np.float32([
+                kpMoving[m.trainIdx].pt for m in goodMatches
+            ]).reshape(-1, 1, 2)
 
-        # # Now we compute the Homography between the Moving and Static Camera
-        homographyStaticMoving, mask = cv.findHomography(
-            srcPoints, dstPoints, cv.RANSAC, 5.0)
+            # # Now we compute the Homography between the Moving and Static Camera
+            homographyStaticMoving, mask = cv.findHomography(
+                srcPoints, dstPoints, cv.RANSAC, 5.0)
 
-        matchesMask = mask.ravel().tolist()
+            matchesMask = mask.ravel().tolist()
 
-        height, width = staticFrame.shape
-        destinationPoints = np.float32([
-            [0, 0],
-            [0, height - 1],
-            [width - 1, height - 1],
-            [width - 1, 0]
-        ]).reshape(-1, 1, 2)
+            height, width = staticFrame.shape
+            destinationPoints = np.float32([
+                [0, 0],
+                [0, height - 1],
+                [width - 1, height - 1],
+                [width - 1, 0]
+            ]).reshape(-1, 1, 2)
 
-        perspectiveTransformation = cv.perspectiveTransform(
-            destinationPoints, homographyStaticMoving)
+            perspectiveTransformation = cv.perspectiveTransform(
+                destinationPoints, homographyStaticMoving)
 
-        movingFrame = cv.polylines(movingFrame, [np.int32(
-            perspectiveTransformation)], True, 255, 3, cv.LINE_AA)
-    else:
-        matchesMask = None
+            movingFrame = cv.polylines(movingFrame, [np.int32(
+                perspectiveTransformation)], True, 255, 3, cv.LINE_AA)
+        else:
+            matchesMask = None
 
-    drawParams = dict(
-        matchColor=(0, 255, 0),
-        singlePointColor=None,
-        matchesMask=matchesMask,
-        flags=2
-    )
+        drawParams = dict(
+            matchColor=(0, 255, 0),
+            singlePointColor=None,
+            matchesMask=matchesMask,
+            flags=2
+        )
 
-    cv.putText(staticFrame, 'Frame ' + str(video1.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
-               str(video1.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
+        cv.putText(staticFrame, 'Frame ' + str(video1.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
+                str(video1.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
 
-    cv.putText(movingFrame, 'Frame ' + str(video2.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
-               str(video2.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
+        cv.putText(movingFrame, 'Frame ' + str(video2.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
+                str(video2.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
 
-    siftMatches = cv.drawMatches(
-        staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, **drawParams)
+        siftMatches = cv.drawMatches( staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, **drawParams)
 
-    cv.imshow("Matches", siftMatches)
-
-    # H = homographyStaticCamera @ homographyStaticMoving
-    # if homographyStaticMoving is not None:
-    #     movingFrame = cv.warpPerspective(
-    #         movingFrame, homographyStaticMoving, (movingFrame.shape[1], movingFrame.shape[0]))
-
-    # cv.imshow("Moving frame",movingFrame)
-
-    # world = cv.warpPerspective(movingFrame, H, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
-
-    # cv.imshow("Homography frames", world)
-
-    # siftMatches = cv.drawMatches(staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, flags=2)
-
-    # cv.imshow("SIFT Matches", siftMatches)
+        cv.imshow("Matches", siftMatches)
 
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):
