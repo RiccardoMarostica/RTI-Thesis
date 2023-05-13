@@ -59,8 +59,6 @@ def retrieveROI(video):
 
         if len(points) == 4:
 
-            print("Points acquired: ", points)
-
             # Set the destination points for the real world.
             # In this case we are setting to project the image into a square of 480x480px
             destinationPoints = np.array([
@@ -70,8 +68,12 @@ def retrieveROI(video):
                 [0, DEFAULT_ASPECT_RATIO]
             ])
 
+            points = np.array(points).astype(np.int32)
+
+            print("Points acquired: ", points)
+            
             # Now we compute the Homography between the World and the Static Camera
-            homograhy, _ = cv.findHomography(np.array(points), destinationPoints)
+            homograhy, _ = cv.findHomography(points, destinationPoints)
 
             # Break inner while since we get them and we computed the Homography
             break
@@ -122,9 +124,13 @@ while video1.isOpened() and video2.isOpened():
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
 
+        print(homographyStaticCamera)
+
         # Define world camera
-        staticFrame = cv.warpPerspective(
-            staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
+        staticFrame = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
+
+        print(staticFrame.shape)
+        break
 
         # Now, let's try to compute the features of each pov
         kpStatic, desStatic = sift.detectAndCompute(staticFrame, None)
@@ -151,8 +157,7 @@ while video1.isOpened() and video2.isOpened():
             ]).reshape(-1, 1, 2)
 
             # # Now we compute the Homography between the Moving and Static Camera
-            homographyStaticMoving, mask = cv.findHomography(
-                srcPoints, dstPoints, cv.RANSAC, 5.0)
+            homographyStaticMoving, mask = cv.findHomography(srcPoints, dstPoints, cv.RANSAC, 5.0)
 
             matchesMask = mask.ravel().tolist()
 
@@ -163,12 +168,9 @@ while video1.isOpened() and video2.isOpened():
                 [width - 1, height - 1],
                 [width - 1, 0]
             ]).reshape(-1, 1, 2)
-
-            perspectiveTransformation = cv.perspectiveTransform(
-                destinationPoints, homographyStaticMoving)
-
-            movingFrame = cv.polylines(movingFrame, [np.int32(
-                perspectiveTransformation)], True, 255, 3, cv.LINE_AA)
+            
+            perspectiveTransformation = cv.perspectiveTransform(destinationPoints, homographyStaticMoving)
+            movingFrame = cv.polylines(movingFrame, [np.int32(perspectiveTransformation)], True, 255, 3, cv.LINE_AA)
         else:
             matchesMask = None
 
@@ -185,9 +187,11 @@ while video1.isOpened() and video2.isOpened():
         cv.putText(movingFrame, 'Frame ' + str(video2.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
                 str(video2.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
 
-        siftMatches = cv.drawMatches( staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, **drawParams)
+        # siftMatches = cv.drawMatches( staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, **drawParams)
+        # cv.imshow("Matches", siftMatches)
 
-        cv.imshow("Matches", siftMatches)
+        cv.imshow("Frame 1", staticFrame)
+        cv.imshow("Frame 2", movingFrame)
 
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):
