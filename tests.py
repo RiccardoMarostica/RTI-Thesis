@@ -37,7 +37,7 @@ def retrieveROI(video):
     video.set(cv.CAP_PROP_POS_FRAMES, 0)
     # ... and get the first frame
     _, frame = video.read()
-    
+        
     # Array used to store points, to then use them to calculate the homography
     points = []
 
@@ -73,7 +73,7 @@ def retrieveROI(video):
             print("Points acquired: ", points)
             
             # Now we compute the Homography between the World and the Static Camera
-            homograhy, _ = cv.findHomography(points, destinationPoints)
+            homograhy, mask = cv.findHomography(points, destinationPoints)
 
             # Break inner while since we get them and we computed the Homography
             break
@@ -82,8 +82,26 @@ def retrieveROI(video):
     cv.destroyWindow("Point detection")
 
     # Return the homography, even if not defined (None)
-    return None if homograhy is None else homograhy
+    return (None, None) if homograhy is None else (homograhy, mask)
 
+def getInstrinsicMatrix(video):
+    # Fattorizzare H, settando il centro dell'immagine come punto principale (cx, cy)
+    # (fx, fy) uso la largezza dell'immagine della camera statica (provare anche a ruotare)
+    # Alternativa, provare ad usare solvePnP()     
+    # Get the video width and height, so we can get cx, cy, fx and fy
+    width = int(video.get(cv.CAP_PROP_FRAME_WIDTH))
+    height = int(video.get(cv.CAP_PROP_FRAME_HEIGHT))
+    
+    cx = width // 2 # Get the integer value of cx
+    cy = height // 2 # Get the integer value of cy
+    
+    fx = fy = width # Get the integer value of fx, fy
+    
+    # Now we can build K
+    K  =  np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]]).astype(np.float32)
+    return K
+    
+    
 # Load videos
 video1 = cv.VideoCapture(STATIC_VIDEO_FILE_PATH)
 video2 = cv.VideoCapture(MOVING_VIDEO_FILE_PATH)
@@ -92,8 +110,13 @@ video2 = cv.VideoCapture(MOVING_VIDEO_FILE_PATH)
 sift = cv.SIFT_create()
 flann = cv.FlannBasedMatcher_create()
 
+# Get the K for static camera
+intrinsicStaticCamera = getInstrinsicMatrix(video1)
+
+print(intrinsicStaticCamera)
+
 # Get the homography of the static camera
-homographyStaticCamera = retrieveROI(video1)
+homographyStaticCamera, maskStaticCamera = retrieveROI(video1)
 
 if homographyStaticCamera is None:
     print("No homography calculated for static camera")
@@ -113,7 +136,7 @@ while video1.isOpened() and video2.isOpened():
     # Get each frame of the video
     staticRet, staticFrame = video1.read()
     movingRet, movingFrame = video2.read()
-
+    
     if staticRet != True or movingRet != True:
         break
 
@@ -124,13 +147,8 @@ while video1.isOpened() and video2.isOpened():
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
 
-        print(homographyStaticCamera)
-
         # Define world camera
         staticFrame = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
-
-        print(staticFrame.shape)
-        break
 
         # Now, let's try to compute the features of each pov
         kpStatic, desStatic = sift.detectAndCompute(staticFrame, None)
@@ -156,11 +174,11 @@ while video1.isOpened() and video2.isOpened():
                 kpMoving[m.trainIdx].pt for m in goodMatches
             ]).reshape(-1, 1, 2)
 
-            # # Now we compute the Homography between the Moving and Static Camera
+            # Now we compute the Homography between the Moving and Static Camera
             homographyStaticMoving, mask = cv.findHomography(srcPoints, dstPoints, cv.RANSAC, 5.0)
 
             matchesMask = mask.ravel().tolist()
-
+        
             height, width = staticFrame.shape
             destinationPoints = np.float32([
                 [0, 0],
@@ -169,9 +187,14 @@ while video1.isOpened() and video2.isOpened():
                 [width - 1, 0]
             ]).reshape(-1, 1, 2)
             
-            perspectiveTransformation = cv.perspectiveTransform(destinationPoints, homographyStaticMoving)
-            movingFrame = cv.polylines(movingFrame, [np.int32(perspectiveTransformation)], True, 255, 3, cv.LINE_AA)
+            # Calculate R, T from homography
+            # This homography is from World (W) to Moving Camera (C)
+            R, T = findCameraExtrinsicsParameters(homographyStaticMoving, intrinsicStaticCamera)
+
+            # perspectiveTransformation = cv.perspectiveTransform(destinationPoints, H)
+            # movingFrame = cv.polylines(movingFrame, [np.int32(perspectiveTransformation)], True, 255, 3, cv.LINE_AA)
         else:
+            R = T = []
             matchesMask = None
 
         drawParams = dict(
@@ -181,17 +204,29 @@ while video1.isOpened() and video2.isOpened():
             flags=2
         )
 
-        cv.putText(staticFrame, 'Frame ' + str(video1.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
-                str(video1.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
+        # If both rotation matrix and translation vector are defined, then we can estimate the light direction
+        if len(R) != 0 and len(T) != 0:
+            R = R.T
+            R = -1 * R
+            l = np.dot(R, T)
+            # TODO: Normalizzare l
+            norm_l = np.linalg.norm(l)
+            ligth_vector = l / norm_l
+            print("Vector value", ligth_vector)
+            cv.imshow("World frame", staticFrame)
+            
 
-        cv.putText(movingFrame, 'Frame ' + str(video2.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
-                str(video2.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
+        # cv.putText(staticFrame, 'Frame ' + str(video1.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
+        #         str(video1.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
+
+        # cv.putText(movingFrame, 'Frame ' + str(video2.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
+        #         str(video2.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
 
         # siftMatches = cv.drawMatches( staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, **drawParams)
         # cv.imshow("Matches", siftMatches)
 
-        cv.imshow("Frame 1", staticFrame)
-        cv.imshow("Frame 2", movingFrame)
+        # cv.imshow("Frame 1", staticFrame)
+        # cv.imshow("Frame 2", movingFrame)
 
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):
