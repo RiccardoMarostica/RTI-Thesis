@@ -33,7 +33,7 @@ center_x, center_y = image_width // 2, image_height // 2
 print(center_x, center_y)
 
 # Define the radius of the circle
-radius = min(image_width, image_height) // 3
+radius = min(image_width, image_height) // 2
 
 # Draw the circle border
 cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 1)
@@ -49,6 +49,11 @@ print(x, y)
 # Convert the coordinates to normalized values between -1 and 1
 # norm_x = (x / (image_width)) * 2 - 1
 # norm_y = (y / (image_height)) * 2 - 1
+
+x = ((x + 1) / 2) * image_width
+y = ((y + 1) / 2) * image_height
+
+print(x, y) 
 
 # print(norm_x, norm_y)
 

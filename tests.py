@@ -107,16 +107,23 @@ def getInstrinsicMatrix(video):
     K  =  np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]]).astype(np.float32)
     return K
 
-def showCircleLightDirection(image):
+def showCircleLightDirection(light_direction):    
+    # Create a blank image
+    image = np.zeros((DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO, 3), dtype=np.uint8)
+
     center_x = center_y = DEFAULT_ASPECT_RATIO // 2
-    radius = DEFAULT_ASPECT_RATIO // 2
-
-    cv.circle(image, (center_x, center_y), 2, (255, 255, 255), -1)
-    
+    radius = DEFAULT_ASPECT_RATIO // 2    
+        
+    # Draw the circle border
+    cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 1)
+    cv.line(image, (0, center_y), (DEFAULT_ASPECT_RATIO, center_y), (255, 255, 255), 1)
+    cv.line(image, (center_x, 0), (center_x, DEFAULT_ASPECT_RATIO), (255, 255, 255), 1)
+        
+    x = ((light_direction[0][0] + 1) / 2) * DEFAULT_ASPECT_RATIO
+    y = ((light_direction[1][0] + 1) / 2) * DEFAULT_ASPECT_RATIO
+        
+    cv.circle(image, (int(x), int(y)), 2, (255, 255, 255), -1)
     cv.imshow("Circle", image)
-    
-image = np.zeros((DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO, 3), dtype=np.uint8)
-
 
 # Load videos
 video1 = cv.VideoCapture(STATIC_VIDEO_FILE_PATH)
@@ -201,54 +208,46 @@ while video1.isOpened() and video2.isOpened():
             # This homography is from World (W) to Moving Camera (C)
             R, T = findCameraExtrinsicsParameters(homographyStaticMoving, intrinsicStaticCamera)
 
-            print("Homography\n", homographyStaticMoving)
-
-            _, rotations, translations, _ = cv.decomposeHomographyMat(homographyStaticMoving, intrinsicStaticCamera)
-            # R = rotations[0]
-            # T = translations[0]
-            print("Possible rotations with cv method\n", rotations[0])
-            print("Possible translations with cv method\n", translations[0])
+            # print("Homography\n", homographyStaticMoving)
 
             # height, width = staticFrame.shape
             # destinationPoints = np.float32([
             #     [0, 0],
-            #     [0, height - 1],
-            #     [width - 1, height - 1],
-            #     [width - 1, 0]
+            #     [0, height],
+            #     [width, height],
+            #     [width, 0]
             # ]).reshape(-1, 1, 2)
             
-            # perspectiveTransformation = cv.perspectiveTransform(destinationPoints, H)
-            # movingFrame = cv.polylines(movingFrame, [np.int32(perspectiveTransformation)], True, 255, 3, cv.LINE_AA)
+            # perspectiveTransformation = cv.perspectiveTransform(destinationPoints, homographyStaticMoving)
+            # movingFrame = cv.polylines(movingFrame, [np.int32(perspectiveTransformation)], True, (0, 255, 0), 3, cv.LINE_AA)
+            
+            # mask = np.zeros(movingFrame.shape[:2], dtype=np.int8)
+            # cv.fillPoly(mask, [np.int32(perspectiveTransformation)], 255)
+            
+            # movingFrame = cv.bitwise_and(movingFrame, movingFrame, mask = mask)
         else:
             R = T = []
             matchesMask = None
 
-        drawParams = dict(
-            matchColor=(0, 255, 0),
-            singlePointColor=None,
-            matchesMask=matchesMask,
-            flags=2
-        )
+        # drawParams = dict(
+        #     matchColor=(0, 255, 0),
+        #     singlePointColor=None,
+        #     matchesMask=matchesMask,
+        #     flags=2
+        # )
 
         # If both rotation matrix and translation vector are defined, then we can estimate the light direction
         if len(R) != 0 and len(T) != 0:
-            print("Rotation matrix\n", R)
-            print("Translation vector\n", T)
             R = R.T
-            print("Rotation matrix transpose\n", R)
             R = -1 * R
-            print("Rotation matrix negated\n", R)
             l = np.dot(R, T)
-            print("Vector light not normalised\n", l)
             norm_l = np.linalg.norm(l)
-            print("Norm of the light vector\n", norm_l)
             ligth_vector = l / norm_l
             print("Vector value\n", ligth_vector)
-            cv.imshow("World frame", staticFrame)
-            showCircleLightDirection()
-            break
-            
-
+            showCircleLightDirection(ligth_vector)
+        
+        cv.imshow("Image", staticFrame)
+        
         # cv.putText(staticFrame, 'Frame ' + str(video1.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
         #         str(video1.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
 
@@ -257,9 +256,6 @@ while video1.isOpened() and video2.isOpened():
 
         # siftMatches = cv.drawMatches( staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, **drawParams)
         # cv.imshow("Matches", siftMatches)
-
-        # cv.imshow("Frame 1", staticFrame)
-        # cv.imshow("Frame 2", movingFrame)
 
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):
@@ -271,4 +267,4 @@ video1.release()
 video2.release()
 
 # And destroy windows
-# cv.destroyAllWindows()
+cv.destroyAllWindows()
