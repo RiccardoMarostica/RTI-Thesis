@@ -118,12 +118,16 @@ def showCircleLightDirection(light_direction):
     cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 1)
     cv.line(image, (0, center_y), (DEFAULT_ASPECT_RATIO, center_y), (255, 255, 255), 1)
     cv.line(image, (center_x, 0), (center_x, DEFAULT_ASPECT_RATIO), (255, 255, 255), 1)
-        
-    x = ((light_direction[0][0] + 1) / 2) * DEFAULT_ASPECT_RATIO
-    y = ((light_direction[1][0] + 1) / 2) * DEFAULT_ASPECT_RATIO
-        
-    cv.circle(image, (int(x), int(y)), 2, (255, 255, 255), -1)
-    cv.imshow("Circle", image)
+    
+    x = int(((light_direction[0][0] + 1) * DEFAULT_ASPECT_RATIO) / 2)
+    y = int(((light_direction[1][0] + 1) * DEFAULT_ASPECT_RATIO) / 2)
+    
+    cv.putText(image, "P = (" + str(x) + ", " + str(y) + ")", (30, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
+
+    
+    cv.circle(image, (int(x), int(y)), 2, (0, 255, 0), -1)
+    cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 1) 
+    cv.imshow("Ligth Plot", image)
 
 # Load videos
 video1 = cv.VideoCapture(STATIC_VIDEO_FILE_PATH)
@@ -159,8 +163,6 @@ while video1.isOpened() and video2.isOpened():
     # Get each frame of the video
     staticRet, staticFrame = video1.read()
     movingRet, movingFrame = video2.read()
-    
-    # staticFrame = cv.rotate(staticFrame, cv.ROTATE_90_CLOCKWISE)
     
     if staticRet != True or movingRet != True:
         break
@@ -246,7 +248,10 @@ while video1.isOpened() and video2.isOpened():
             print("Vector value\n", ligth_vector)
             showCircleLightDirection(ligth_vector)
         
-        cv.imshow("Image", staticFrame)
+        staticFrame = cv.rotate(staticFrame, cv.ROTATE_90_COUNTERCLOCKWISE)
+        staticFrame = cv.cvtColor(staticFrame, cv.COLOR_GRAY2BGR)
+        cv.imshow("World Reference", staticFrame)
+        cv.imshow("Moving Camera", movingFrame)
         
         # cv.putText(staticFrame, 'Frame ' + str(video1.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
         #         str(video1.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)

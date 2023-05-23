@@ -40,7 +40,11 @@ cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 1)
 cv.line(image, (0, center_y), (image_height, center_y), (255, 255, 255), 1)
 cv.line(image, (center_x, 0), (center_x, image_width), (255, 255, 255), 1)
 
-point = np.array([[-0.82], [0.09], [1]])
+cv.putText(image, "-1", (30, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
+cv.putText(image, "1", (DEFAULT_ASPECT_RATIO - 30, DEFAULT_ASPECT_RATIO - 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
+
+# point = np.array([[-0.82], [0.09], [1]])
+point = np.array([[0], [1], [1]])
 point = point[:2].tolist()
 x = point[0][0]
 y = point[1][0]
@@ -50,8 +54,8 @@ print(x, y)
 # norm_x = (x / (image_width)) * 2 - 1
 # norm_y = (y / (image_height)) * 2 - 1
 
-x = ((x + 1) / 2) * image_width
-y = ((y + 1) / 2) * image_height
+x = ((x + 1) * image_width) / 2
+y = ((y + 1) * image_height) / 2
 
 print(x, y) 
 
@@ -62,8 +66,9 @@ distance = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
 
 print(distance)
 print(radius)
-cv.circle(image, (int(x), int(y)), 5, (255, 255, 255), -1)
-
+if distance <= radius:
+    cv.circle(image, (int(x), int(y)), 2, (255, 255, 255), -1)
+    cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2) 
 
 # # Check if the distance is within the circle's radius
 # if np.abs(distance - radius) <= 1:
