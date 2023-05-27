@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+import os
 from constants import *
 import time
 
@@ -126,8 +127,9 @@ def showCircleLightDirection(light_direction):
 
     
     cv.circle(image, (int(x), int(y)), 2, (0, 255, 0), -1)
-    cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 1) 
-    cv.imshow("Ligth Plot", image)
+    cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 1)
+    
+    return image
 
 # Load videos
 video1 = cv.VideoCapture(STATIC_VIDEO_FILE_PATH)
@@ -153,6 +155,7 @@ if homographyStaticCamera is None:
 video1.set(cv.CAP_PROP_POS_FRAMES, 33)
 video2.set(cv.CAP_PROP_POS_FRAMES, 0)
 
+milliseconds = 0
 previousTime = 0
 
 while video1.isOpened() and video2.isOpened():
@@ -173,16 +176,16 @@ while video1.isOpened() and video2.isOpened():
         # Convert to grayscale
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
-
+        
         # Define world camera
-        staticFrame = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
+        worldReference = cv.warpPerspective(staticFrame, homographyStaticCamera, (DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO))
 
         # Now, let's try to compute the features of each pov
-        kpStatic, desStatic = sift.detectAndCompute(staticFrame, None)
+        kpWorld, desWorld = sift.detectAndCompute(worldReference, None)
         kpMoving, desMoving = sift.detectAndCompute(movingFrame, None)
 
         # Perform feature matching using KNN (K-Nearest-Neighborhood) technique
-        matches = flann.knnMatch(desStatic, desMoving, k=2)
+        matches = flann.knnMatch(desWorld, desMoving, k=2)
 
         # Retrieve the good matches, to eliminate the outliers
         goodMatches = []
@@ -195,7 +198,7 @@ while video1.isOpened() and video2.isOpened():
         # Here at this point, after computing the good matches we can try to compute the homography H21 (Moving with Static)
         if len(goodMatches) > MIN_MATCH_COUNT:
             srcPoints = np.float32([
-                kpStatic[m.queryIdx].pt for m in goodMatches
+                kpWorld[m.queryIdx].pt for m in goodMatches
             ]).reshape(-1, 1, 2)
             dstPoints = np.float32([
                 kpMoving[m.trainIdx].pt for m in goodMatches
@@ -210,33 +213,27 @@ while video1.isOpened() and video2.isOpened():
             # This homography is from World (W) to Moving Camera (C)
             R, T = findCameraExtrinsicsParameters(homographyStaticMoving, intrinsicStaticCamera)
 
-            # print("Homography\n", homographyStaticMoving)
-
-            # height, width = staticFrame.shape
-            # destinationPoints = np.float32([
-            #     [0, 0],
-            #     [0, height],
-            #     [width, height],
-            #     [width, 0]
-            # ]).reshape(-1, 1, 2)
+            height, width = worldReference.shape
+            destinationPoints = np.float32([
+                [0, 0],
+                [0, height],
+                [width, height],
+                [width, 0]
+            ]).reshape(-1, 1, 2)
             
-            # perspectiveTransformation = cv.perspectiveTransform(destinationPoints, homographyStaticMoving)
-            # movingFrame = cv.polylines(movingFrame, [np.int32(perspectiveTransformation)], True, (0, 255, 0), 3, cv.LINE_AA)
+            perspectiveTransformation = cv.perspectiveTransform(destinationPoints, homographyStaticMoving)
+            movingFrame = cv.polylines(movingFrame, [np.int32(perspectiveTransformation)], True, (0, 255, 0), 3, cv.LINE_AA)
             
-            # mask = np.zeros(movingFrame.shape[:2], dtype=np.int8)
-            # cv.fillPoly(mask, [np.int32(perspectiveTransformation)], 255)
-            
-            # movingFrame = cv.bitwise_and(movingFrame, movingFrame, mask = mask)
         else:
             R = T = []
             matchesMask = None
 
-        # drawParams = dict(
-        #     matchColor=(0, 255, 0),
-        #     singlePointColor=None,
-        #     matchesMask=matchesMask,
-        #     flags=2
-        # )
+        drawParams = dict(
+            matchColor=(0, 255, 0),
+            singlePointColor=None,
+            matchesMask=matchesMask,
+            flags=2
+        )
 
         # If both rotation matrix and translation vector are defined, then we can estimate the light direction
         if len(R) != 0 and len(T) != 0:
@@ -246,21 +243,24 @@ while video1.isOpened() and video2.isOpened():
             norm_l = np.linalg.norm(l)
             ligth_vector = l / norm_l
             print("Vector value\n", ligth_vector)
-            showCircleLightDirection(ligth_vector)
-        
-        staticFrame = cv.rotate(staticFrame, cv.ROTATE_90_COUNTERCLOCKWISE)
-        staticFrame = cv.cvtColor(staticFrame, cv.COLOR_GRAY2BGR)
-        cv.imshow("World Reference", staticFrame)
-        cv.imshow("Moving Camera", movingFrame)
-        
-        # cv.putText(staticFrame, 'Frame ' + str(video1.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
-        #         str(video1.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
+            circle = showCircleLightDirection(ligth_vector)
+        else:
+            circle = []
+            
+        staticFrame = cv.resize(staticFrame, (540, 960))
+        siftMatches = cv.drawMatches(worldReference, kpWorld, movingFrame, kpMoving, goodMatches, None, **drawParams)
 
-        # cv.putText(movingFrame, 'Frame ' + str(video2.get(cv.CAP_PROP_POS_FRAMES)) + " of " +
-        #         str(video2.get(cv.CAP_PROP_FRAME_COUNT)), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 2, cv.LINE_AA)
+        if len(circle) != 0:
+            current_folder = os.path.join("outputs", f'Folder_{milliseconds}')
+            os.makedirs(current_folder, exist_ok=True)
+            cv.imwrite(os.path.join(current_folder, "static.jpg"), staticFrame)
+            cv.imwrite(os.path.join(current_folder, "siftMatches.jpg"), siftMatches)
+            cv.imwrite(os.path.join(current_folder, "lightPlot.jpg"), circle)
 
-        # siftMatches = cv.drawMatches( staticFrame, kpStatic, movingFrame, kpMoving, goodMatches, None, **drawParams)
-        # cv.imshow("Matches", siftMatches)
+        # Now, jump over 2 seconds to get next frame
+        milliseconds += 1000
+        video1.set(cv.CAP_PROP_POS_MSEC, milliseconds)
+        video2.set(cv.CAP_PROP_POS_MSEC, milliseconds)
 
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):

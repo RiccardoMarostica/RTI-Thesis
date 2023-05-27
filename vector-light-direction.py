@@ -63,7 +63,7 @@ print(x, y)
 
 # Calculate the distance from the center
 distance = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
-
+   
 print(distance)
 print(radius)
 if distance <= radius:
