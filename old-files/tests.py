@@ -258,9 +258,13 @@ while video1.isOpened() and video2.isOpened():
             cv.imwrite(os.path.join(current_folder, "lightPlot.jpg"), circle)
 
         # Now, jump over 2 seconds to get next frame
-        milliseconds += 1000
-        video1.set(cv.CAP_PROP_POS_MSEC, milliseconds)
-        video2.set(cv.CAP_PROP_POS_MSEC, milliseconds)
+        milliseconds += 1500
+        
+        if (round(video1.get(cv.CAP_PROP_FRAME_COUNT) / video1.get(cv.CAP_PROP_FPS)) >= round(milliseconds / 1000)):
+            video1.set(cv.CAP_PROP_POS_MSEC, milliseconds)
+            video2.set(cv.CAP_PROP_POS_MSEC, milliseconds)
+        else:
+            break
 
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):
