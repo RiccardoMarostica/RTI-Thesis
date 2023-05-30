@@ -11,6 +11,12 @@ class Video:
         # Returns True if the video file is open. False otherwise
         return True if self.video.isOpened() else False
     
+    def getCurrentFrame(self):
+        if self.isOpen():
+            ret, frame = self.video.read()
+            return ret, frame
+        return None, None
+    
     def getFPS(self) -> int:
         # Return the FPS of the video is it is open. Otherwise, returns 0
         if self.isOpen():
@@ -45,3 +51,21 @@ class Video:
         if self.isOpen():
             return int(round(frames/fps))
         return 0
+    
+    def showFrame(self, frame, debug = False):
+        if debug == True:
+            # Show the frame from OpenCV
+            cv.imshow("Frame", frame)
+
+            # Press Q on the keyboard to exit.
+            if (cv.waitKey(25) & 0xFF == ord('q')):
+                return
+    
+    def setVideoPosition(self, ms : int) -> None:
+        # If the video is open, set the next position in the video, after ms value
+        if self.isOpen():
+            self.video.set(cv.CAP_PROP_POS_MSEC, ms)
+            
+    def releaseVideo(self) -> None:
+        # Release video file
+        self.video.release()
