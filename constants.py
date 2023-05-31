@@ -1,8 +1,6 @@
 STATIC_VIDEO_CALIBRATION_FILE_PATH = "./video/cam-static/calibration_riccardo.mp4"
 MOVING_VIDEO_CALIBRATION_FILE_PATH = "./video/cam-moving/calibration_riccardo.mp4"
 
-# STATIC_VIDEO_FILE_PATH = "./video/cam-static/coin1.mp4"
-# MOVING_VIDEO_FILE_PATH = "./video/cam-moving/coin1.mp4"
 STATIC_VIDEO_FILE_PATH = "./video/cam-static/static.mov"
 MOVING_VIDEO_FILE_PATH = "./video/cam-moving/moving.mov"
 
@@ -14,6 +12,7 @@ CALIBRATION_PATTERN_IMG_PATH = "./video/calibration_pattern.png"
 DEFAULT_FPS_RATE = 30
 DEFAULT_SAMPLING_AUDIO_RATE = 44100
 
+DEFAULT_SQUARE_SIZE = 400
 DEFAULT_ASPECT_RATIO = 400
 
 MIN_MATCH_COUNT = 10 #60

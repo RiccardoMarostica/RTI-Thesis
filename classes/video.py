@@ -62,11 +62,16 @@ class Video:
         # If the video is open, set the next position in the video, after ms value
         if self.isOpen():
             self.video.set(cv.CAP_PROP_POS_MSEC, ms)
+        
+    def setVideoFrame(self, pos : int = 0) -> None:
+        # If the video is open, set it to current frame position number
+        if self.isOpen():
+            self.video.set(cv.CAP_PROP_POS_FRAMES, pos)
 
-    def showFrame(self, frame, debug=False):
+    def showFrame(self, frame, winname = "Frame", debug=False):
         if debug == True:
             # Show the frame from OpenCV
-            cv.imshow("Frame", frame)
+            cv.imshow(winname, frame)
 
             # Press Q on the keyboard to exit.
             if (cv.waitKey(25) & 0xFF == ord('q')):

@@ -14,17 +14,17 @@ class CameraCalibration:
     milliseconds = 0
 
     # Construction, just take the video from the main
-    def __init__(self, video, cornersX, cornersY):
+    def __init__(self, video : Video, corners : tuple):
         # Only field used to calibrate the camera
         self.video: Video = video
 
         # Get number of corners in the chessboard
-        self.cornersX = cornersX
-        self.cornersY = cornersY
+        self.cornersX = corners[0]
+        self.cornersY = corners[1]
 
         # Preprare object points, like: (0, 0, 0), (1, 0, 0), ..., (8, 5, 0)
         # For simplicity we can consider that z = 0
-        self.objectPoint = np.zeros((cornersX * cornersY, 3), np.float32)
+        self.objectPoint = np.zeros((self.cornersX * self.cornersY, 3), np.float32)
         self.objectPoint[:, :2] = np.mgrid[0:9, 0:6].T.reshape(-1, 2)
 
         # These fields are the results of the camera calibration
@@ -66,7 +66,7 @@ class CameraCalibration:
                 self.milliseconds += 2000
                 self.video.setVideoPosition(self.milliseconds)
                 
-                self.video.showFrame(frame, self.debug)
+                self.video.showFrame(frame, debug = self.debug)
                 
             else:
                 break
@@ -95,7 +95,9 @@ class CameraCalibration:
         return True
 
     def getIntrinsicMatrix(self) -> list:
+        # Return the 3 x 3 Matrix K containing intrinsic parameters of the camera
         return self.intrinsicParameters
 
     def getDistortionCoefficients(self) -> list:
+        # Return distortion coefficients (5 coefficients) vector
         return self.distortionCoefficients
