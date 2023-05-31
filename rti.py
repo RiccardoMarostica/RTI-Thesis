@@ -2,6 +2,7 @@
 import cv2 as cv
 import numpy as np
 import time
+import signal
 
 # Import classes
 from classes.videoSynchronisation import VideoSynchronisation
@@ -15,16 +16,16 @@ def main():
     
     print("Starting camera calibration...")
     
-    # Get the two calibrations for both static and moving camera
-    calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
-    calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
+    # # Get the two calibrations for both static and moving camera
+    # calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
+    # calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
     
-    # Calibrate cameras and check result
-    if (calibrationStatic.calibrateCamera() == False or calibrationMoving.calibrateCamera() == False):
-        print("Error when calibrating one of the two cameras. ")
-        exit(-1)
-    else:
-        print("Camera calibration completed without errors")
+    # # Calibrate cameras and check result
+    # if (calibrationStatic.calibrateCamera() == False or calibrationMoving.calibrateCamera() == False):
+    #     print("Error when calibrating one of the two cameras. ")
+    #     exit(-1)
+    # else:
+    #     print("Camera calibration completed without errors")
         
     # Create the two videos
     videoStatic = Video(STATIC_VIDEO_FILE_PATH)
@@ -112,16 +113,6 @@ def main():
                 # If the homography is defined, it's possible to retrieve the extrinsic parameters R and T
                 R, T = rti.getExtrinsicsParameters(homographyWorldMoving, defaultK)
                 
-                destinationPoints = np.array([
-                    [0, 0],
-                    [DEFAULT_SQUARE_SIZE, 0],
-                    [DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE],
-                    [0, DEFAULT_SQUARE_SIZE]
-                ])
-                # TODO: Check questo
-                perspectiveTransformation = cv.perspectiveTransform(destinationPoints, homographyWorldMoving)
-                movingFrame = cv.polylines(movingFrame, [np.int32(perspectiveTransformation)], True, (0, 255, 0), 3, cv.LINE_AA)
-                
             else:
                 R = T = []
                 
@@ -130,9 +121,13 @@ def main():
                 lightVector = rti.getLightVector(R, T)
                 # ... and store it inside the light directions
                 rti.storeLightVector(worldFrame, lightVector)
+            else:
+                lightVector = []
+
+            cirlcePlot = rti.showCircleLightDirection(lightVector)
                 
             videoStatic.showFrame(worldFrame, "World", True)
-            videoMoving.showFrame(cv.resize(movingFrame, (960, 540)), "Moving camera", True)
+            cv.imshow("Circle Plot", cirlcePlot)
                 
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):

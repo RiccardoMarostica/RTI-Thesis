@@ -139,8 +139,6 @@ class RTI:
         for m1, m2 in matches:
             if m1.distance < 0.7 * m2.distance:
                 goodMatches.append(m1)
-        
-        print("Matched points", len(goodMatches))
 
         if len(goodMatches) > MIN_MATCH_COUNT:
             # Get source and destination points found inside the good matches to build the homography between the two frames
@@ -164,3 +162,24 @@ class RTI:
     def storeLightVector(self, frame, lightVector):
         # store light direction in a specific array
         self.lightDirections.append(LightDirection(frame, lightVector))
+            
+    def showCircleLightDirection(self, light_direction):    
+        # Create a blank image
+        image = np.zeros((DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO, 3), dtype=np.uint8)
+
+        center_x = center_y = DEFAULT_ASPECT_RATIO // 2
+        radius = DEFAULT_ASPECT_RATIO // 2    
+            
+        # Draw the circle border
+        cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 1)
+        cv.line(image, (0, center_y), (DEFAULT_ASPECT_RATIO, center_y), (255, 255, 255), 1)
+        cv.line(image, (center_x, 0), (center_x, DEFAULT_ASPECT_RATIO), (255, 255, 255), 1)
+        
+        if len(light_direction) != 0:
+            x = int(((light_direction[0][0] + 1) * DEFAULT_ASPECT_RATIO) / 2)
+            y = int(((light_direction[1][0] + 1) * DEFAULT_ASPECT_RATIO) / 2)        
+            cv.putText(image, "P = (" + str(x) + ", " + str(y) + ")", (30, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
+            cv.circle(image, (int(x), int(y)), 2, (0, 255, 0), -1)
+            cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 1)
+        
+        return image
