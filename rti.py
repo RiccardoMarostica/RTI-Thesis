@@ -2,13 +2,16 @@
 import cv2 as cv
 import numpy as np
 import time
-import signal
+import sys
+
+from PyQt6.QtWidgets import QApplication
 
 # Import classes
 from classes.videoSynchronisation import VideoSynchronisation
 from classes.cameraCalibration import CameraCalibration
 from classes.video import Video
 from classes.rtiAlgorithm import RTI
+from classes.gui import MainWindow
 
 from constants import *
 
@@ -138,5 +141,18 @@ def main():
     videoMoving.releaseVideo()
     cv.destroyAllWindows()
     
-if __name__ =="__main__":
-    main()
+def initaliseMainWindow():
+    # Build the Application (only one instance can exsists)
+    app = QApplication([])
+    
+    # Show the main window
+    mainWindow = MainWindow()
+    
+    # And shows it
+    sys.exit(app.exec())
+    
+    
+    
+if __name__ == "__main__":
+    initaliseMainWindow()
+    # main()
