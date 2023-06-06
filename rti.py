@@ -77,13 +77,16 @@ def main():
         videoStatic.setVideoFrame()
         videoMoving.setVideoFrame(abs(frameDifference))
    
-    # Variable used to synchronise two video with different FPS
-    previous_time = 0
+    # # Variable used to synchronise two video with different FPS
+    # previous_time = 0
+    
+    timeStaticVideo = 0.
+    timeMovingVideo = 0.
         
     while videoStatic.isOpen() and videoMoving.isOpen():
             
-        # Get time elapsed between now and previous iteration   
-        time_elapsed = time.time() - previous_time
+        # # Get time elapsed between now and previous iteration   
+        # time_elapsed = time.time() - previous_time
         
         # Get frame from each video
         retStatic, staticFrame = videoStatic.getCurrentFrame()
@@ -92,45 +95,57 @@ def main():
         if retStatic != True or retMoving != True:
             break
         
-        if time_elapsed > 1./defaultFps:
-            # Now overwrite the previous time
-            previous_time = time.time()
+        # For each iteration, sum the time for each video based on the tick (1 / FPS_video)
+        timeStaticVideo += 1. / videoStatic.getFPS()
+        timeMovingVideo += 1. / videoMoving.getFPS()
+        
+        # Now depends on which video has lower FPS
+        if videoStatic.getFPS() < videoMoving.getFPS():
+            # Video static is behind more than 1 frame, so skip it to recover the loss
+            if timeStaticVideo > timeMovingVideo + (1. / videoMoving.getFPS()):
+                retStatic, staticFrame = videoStatic.getCurrentFrame()
+        else:    
+            # Video moving is behind more than 1 frame, so skip it to recover the loss
+            if timeMovingVideo > timeStaticVideo + (1. / videoMoving.getFPS()):
+                retMoving, movingFrame = videoMoving.getCurrentFrame()
             
-            # TODO: Apply undistortion
+        # # Now overwrite the previous time
+        # previous_time = time.time()
+        
+        # TODO: Apply undistortion
+        
+        # Convert frames to grayscale
+        staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
+        movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
+        
+        # Now get world frame using static camera and the homography
+        worldFrame = cv.warpPerspective(staticFrame, worldHomography, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
+        
+        # Now, it's possible to get homography between the world and the moving camera
+        # Important: The order of parameters is important. In our case the mapping of the features to calculate the homography
+        # are from the world frame to the moving frame.
+        # Changing the order will change the computation of the ligth direction
+        homographyWorldMoving = rti.getHomographyWithFeatureMatching(worldFrame, movingFrame)
+        
+        if (len(homographyWorldMoving) != 0):
             
-            # Convert frames to grayscale
-            staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
-            movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
+            # If the homography is defined, it's possible to retrieve the extrinsic parameters R and T
+            R, T = rti.getExtrinsicsParameters(homographyWorldMoving, defaultK)
             
-            # Now get world frame using static camera and the homography
-            worldFrame = cv.warpPerspective(staticFrame, worldHomography, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
+        else:
+            R = T = []
             
-            # Now, it's possible to get homography between the world and the moving camera
-            # Important: The order of parameters is important. In our case the mapping of the features to calculate the homography
-            # are from the world frame to the moving frame.
-            # Changing the order will change the computation of the ligth direction
-            homographyWorldMoving = rti.getHomographyWithFeatureMatching(worldFrame, movingFrame)
+        if len(R) != 0 and len(T) != 0:
+            # Get the light vector
+            lightVector = rti.getLightVector(R, T)
+            # ... and store it inside the light directions
+            rti.storeLightVector(worldFrame, lightVector)
+        else:
+            lightVector = []
+        cirlcePlot = rti.showCircleLightDirection(lightVector)
             
-            if (len(homographyWorldMoving) != 0):
-                
-                # If the homography is defined, it's possible to retrieve the extrinsic parameters R and T
-                R, T = rti.getExtrinsicsParameters(homographyWorldMoving, defaultK)
-                
-            else:
-                R = T = []
-                
-            if len(R) != 0 and len(T) != 0:
-                # Get the light vector
-                lightVector = rti.getLightVector(R, T)
-                # ... and store it inside the light directions
-                rti.storeLightVector(worldFrame, lightVector)
-            else:
-                lightVector = []
-
-            cirlcePlot = rti.showCircleLightDirection(lightVector)
-                
-            videoStatic.showFrame(worldFrame, "World", True)
-            cv.imshow("Circle Plot", cirlcePlot)
+        videoStatic.showFrame(worldFrame, "World", True)
+        cv.imshow("Circle Plot", cirlcePlot)
                 
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
@@ -154,5 +169,5 @@ def initaliseMainWindow():
     
     
 if __name__ == "__main__":
-    initaliseMainWindow()
-    # main()
+    # initaliseMainWindow()
+    main()

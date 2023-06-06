@@ -18,10 +18,10 @@ class Video:
             return ret, frame
         return None, None
 
-    def getFPS(self) -> int:
+    def getFPS(self) -> float:
         # Return the FPS of the video is it is open. Otherwise, returns 0
         if self.isOpen():
-            return int(round(self.video.get(cv.CAP_PROP_FPS)))
+            return self.video.get(cv.CAP_PROP_FPS)
         return 0
 
     def getWidth(self) -> int:
