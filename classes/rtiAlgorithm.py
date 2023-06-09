@@ -1,6 +1,5 @@
 import cv2 as cv
 import numpy as np
-import os
 from constants import *
 
 from classes.video import Video
@@ -17,7 +16,7 @@ class RTI:
         self.sift = cv.SIFT_create()
         self.flann = cv.FlannBasedMatcher_create()
         
-        self.lightDirections = []
+        self.lightDirections : list[LightDirection] = []
         pass
 
     def getDefaultK(self, video : Video):
@@ -162,6 +161,9 @@ class RTI:
     def storeLightVector(self, frame, lightVector):
         # store light direction in a specific array
         self.lightDirections.append(LightDirection(frame, lightVector))
+        
+    def getLightDirections(self):
+        return self.lightDirections
             
     def showCircleLightDirection(self, light_direction):    
         # Create a blank image
@@ -183,3 +185,23 @@ class RTI:
             cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 1)
         
         return image
+
+    def applRBFInterpolation(self, xf, yf, nu, nv):
+        # Our function will take in input the parameters lxf, lyf, u, v
+        # This is the set in which is possible to apply RBF
+        lxf, lyf = np.meshgrid(np.linspace(-1.0, 1.0, xf), np.linspace(-1.0, 1.0, yf))
+
+        lightDirections = self.getLightDirections()
+                
+        lx = np.array([tmp.ligthVector[0] for tmp in lightDirections])
+        ly = np.array([tmp.ligthVector[1] for tmp in lightDirections])
+                
+        for u in range(nu):
+            for v in range (nv):
+                
+                i = np.array([tmp.frame[u, v] for tmp in lightDirections])
+                
+        print(lx, ly, i)
+                
+        
+        pass

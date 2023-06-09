@@ -1,8 +1,9 @@
 # Import default modules
 import cv2 as cv
 import numpy as np
-import time
 import sys
+
+
 
 from PyQt6.QtWidgets import QApplication
 
@@ -76,17 +77,13 @@ def main():
         # ... or vice versa
         videoStatic.setVideoFrame()
         videoMoving.setVideoFrame(abs(frameDifference))
-   
-    # # Variable used to synchronise two video with different FPS
-    # previous_time = 0
     
     timeStaticVideo = 0.
     timeMovingVideo = 0.
+    
+    iteration = 0
         
     while videoStatic.isOpen() and videoMoving.isOpen():
-            
-        # # Get time elapsed between now and previous iteration   
-        # time_elapsed = time.time() - previous_time
         
         # Get frame from each video
         retStatic, staticFrame = videoStatic.getCurrentFrame()
@@ -108,10 +105,7 @@ def main():
             # Video moving is behind more than 1 frame, so skip it to recover the loss
             if timeMovingVideo > timeStaticVideo + (1. / videoMoving.getFPS()):
                 retMoving, movingFrame = videoMoving.getCurrentFrame()
-            
-        # # Now overwrite the previous time
-        # previous_time = time.time()
-        
+    
         # TODO: Apply undistortion
         
         # Convert frames to grayscale
@@ -128,10 +122,8 @@ def main():
         homographyWorldMoving = rti.getHomographyWithFeatureMatching(worldFrame, movingFrame)
         
         if (len(homographyWorldMoving) != 0):
-            
             # If the homography is defined, it's possible to retrieve the extrinsic parameters R and T
             R, T = rti.getExtrinsicsParameters(homographyWorldMoving, defaultK)
-            
         else:
             R = T = []
             
@@ -142,14 +134,22 @@ def main():
             rti.storeLightVector(worldFrame, lightVector)
         else:
             lightVector = []
+            
         cirlcePlot = rti.showCircleLightDirection(lightVector)
             
         videoStatic.showFrame(worldFrame, "World", True)
         cv.imshow("Circle Plot", cirlcePlot)
+        
+        iteration += 1
+        
+        if (iteration == 15):
+            break
                 
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
+        
+    rti.applRBFInterpolation(11, 11, DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE)
     
     # release videos and destroy windows
     videoStatic.releaseVideo()
