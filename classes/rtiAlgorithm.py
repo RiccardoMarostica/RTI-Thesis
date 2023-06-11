@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+from scipy.interpolate import Rbf
 from constants import *
 
 from classes.video import Video
@@ -126,12 +127,17 @@ class RTI:
         return R, T
 
     def getHomographyWithFeatureMatching(self, frame1, frame2):
-        # Compute features using SIFT for both frames
-        keypoints1, descriptors1 = self.sift.detectAndCompute(frame1, None)
-        keypoints2, descriptors2 = self.sift.detectAndCompute(frame2, None)
+        
+        try:
+            # Compute features using SIFT for both frames
+            keypoints1, descriptors1 = self.sift.detectAndCompute(frame1, None)
+            keypoints2, descriptors2 = self.sift.detectAndCompute(frame2, None)
 
-        # Perform feature matching using KNN (K-Nearest-Neighborhood) technique
-        matches = self.flann.knnMatch(descriptors1, descriptors2, k=2)
+            # Perform feature matching using KNN (K-Nearest-Neighborhood) technique
+            matches = self.flann.knnMatch(descriptors1, descriptors2, k=2)
+        except:
+            # If an error occurs in the calculation of the matches, just return an empty array corresponding to empty homography
+            return []
 
         # ... and remove outliers
         goodMatches = []
@@ -189,19 +195,29 @@ class RTI:
     def applRBFInterpolation(self, xf, yf, nu, nv):
         # Our function will take in input the parameters lxf, lyf, u, v
         # This is the set in which is possible to apply RBF
+        
+        # First use a matrix with size nu x nv, to store the result of interpolation at each position
+        self.rbfInterpolation = []
+        
+        # Then calculate lxf and lyf which are necessary to calculate RBF
         lxf, lyf = np.meshgrid(np.linspace(-1.0, 1.0, xf), np.linspace(-1.0, 1.0, yf))
 
+        # Retrieve the array of stored light directions computed in the previous step
         lightDirections = self.getLightDirections()
-                
+             
+        # Get each value x and y in the light vector array   
         lx = np.array([tmp.ligthVector[0] for tmp in lightDirections])
         ly = np.array([tmp.ligthVector[1] for tmp in lightDirections])
                 
+        # Now double loop to iterate along all the frame, and given the intensity at the pixel (u, v), calculate RBF Interpolation
         for u in range(nu):
             for v in range (nv):
-                
                 i = np.array([tmp.frame[u, v] for tmp in lightDirections])
-                
-        print(lx, ly, i)
-                
-        
+                r = Rbf(lx, ly, i, function='linear')
+                i_interpolate = r(lxf, lyf)
+                self.rbfInterpolation.append(i_interpolate)
+                print("Pixel (", u, ", ", v, ") done")
         pass
+
+    def getRBFInterpolation(self):
+        return self.rbfInterpolation

@@ -43,26 +43,31 @@ def main():
     
     # And try to get the 4 points in the static video
     worldHomography = rti.getWorldHomography(videoStatic)
+    
+    cv.destroyAllWindows()
+    
     if len(worldHomography) == 0:
         print("Error when computing homography to get world reference system. ")
         exit(-1)
     else:
         print("Homography calculated without errors")
     
-    print("Starting video synchronisation...")
+    # print("Starting video synchronisation...")
     
-    # Create class to synch the videos
-    videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
-    # ... and them synch them
-    videoSynchronisation.synchroniseVideo()
+    # # Create class to synch the videos
+    # videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
+    # # ... and them synch them
+    # videoSynchronisation.synchroniseVideo()
     
-    print("Video synchronisation completed without errors")
+    # print("Video synchronisation completed without errors")
     
-    # After synchronisation, get the offset between the two videos
-    # First get the default FPS
-    defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
-    # ... and then compute the shift between the videos
-    frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
+    # # After synchronisation, get the offset between the two videos
+    # # First get the default FPS
+    # defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
+    # # ... and then compute the shift between the videos
+    # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
+    
+    frameDifference = 33
     
     print("Frame difference: ", frameDifference)
     
@@ -77,13 +82,21 @@ def main():
         # ... or vice versa
         videoStatic.setVideoFrame()
         videoMoving.setVideoFrame(abs(frameDifference))
+        
+    print("Starting calculation of the light directions in the videos...")
     
+    # Variable used to store the time calculated after each read on the video, in order to provide synchronisation
     timeStaticVideo = 0.
     timeMovingVideo = 0.
     
+    # Variable used to move both videos of a specific time (in ms), based on the current iteration
     iteration = 0
         
     while videoStatic.isOpen() and videoMoving.isOpen():
+        
+        # Move the video every [DEFAULT_MSEC_GAP_VIDEO] ms to obtain less frames
+        videoStatic.setVideoPosition(int(iteration * DEFAULT_MSEC_GAP_VIDEO))
+        videoMoving.setVideoPosition(int(iteration * DEFAULT_MSEC_GAP_VIDEO))
         
         # Get frame from each video
         retStatic, staticFrame = videoStatic.getCurrentFrame()
@@ -135,21 +148,28 @@ def main():
         else:
             lightVector = []
             
-        cirlcePlot = rti.showCircleLightDirection(lightVector)
+        # cirlcePlot = rti.showCircleLightDirection(lightVector)
             
-        videoStatic.showFrame(worldFrame, "World", True)
-        cv.imshow("Circle Plot", cirlcePlot)
+        # videoStatic.showFrame(staticFrame, "Static Frame", True)
+        # videoMoving.showFrame(movingFrame, "Moving Frame", True)
+        # cv.imshow("Circle Plot", cirlcePlot)
         
         iteration += 1
         
-        if (iteration == 15):
-            break
-                
-        # Press Q on the keyboard to exit.
-        if (cv.waitKey(25) & 0xFF == ord('q')):
-            break
+        # # Press Q on the keyboard to exit.
+        # if (cv.waitKey(25) & 0xFF == ord('q')):
+        #     break
         
+    print("Calculation of the light directions completed without errors")
+    
+    print("Starting with RBF Interpolation...")
+    
     rti.applRBFInterpolation(11, 11, DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE)
+    
+    print("RBF Interpolation done)")
+    
+    interpolation = rti.getRBFInterpolation()
+    np.savetxt("interpolationMatrix.dat", interpolation)
     
     # release videos and destroy windows
     videoStatic.releaseVideo()
