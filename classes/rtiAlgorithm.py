@@ -216,7 +216,7 @@ class RTI:
                 r = Rbf(lx, ly, i, function='linear')
                 i_interpolate = r(lxf, lyf)
                 self.rbfInterpolation.append(i_interpolate)
-                print("Pixel (", u, ", ", v, ") done")
+                # print("Pixel (", u, ", ", v, ") done")
         pass
 
     def getRBFInterpolation(self):

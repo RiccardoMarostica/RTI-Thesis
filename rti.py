@@ -3,8 +3,6 @@ import cv2 as cv
 import numpy as np
 import sys
 
-
-
 from PyQt6.QtWidgets import QApplication
 
 # Import classes
@@ -159,7 +157,10 @@ def main():
         # # Press Q on the keyboard to exit.
         # if (cv.waitKey(25) & 0xFF == ord('q')):
         #     break
-        
+    
+    lightDirections = rti.getLightDirections()
+    print("Frames aquired: ", len(lightDirections))
+    
     print("Calculation of the light directions completed without errors")
     
     print("Starting with RBF Interpolation...")
@@ -169,7 +170,7 @@ def main():
     print("RBF Interpolation done)")
     
     interpolation = rti.getRBFInterpolation()
-    np.savetxt("interpolationMatrix.dat", interpolation)
+    np.save("interpolationMatrix", interpolation)
     
     # release videos and destroy windows
     videoStatic.releaseVideo()

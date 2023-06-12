@@ -1,5 +1,11 @@
 import numpy as np
 
-rbfInterpolation = np.array((400, 400), dtype=object)
+from constants import *
 
-print(rbfInterpolation)
+rbfInterpolation = np.load("interpolationMatrix.npy")
+
+rbfInterpolation = np.array(rbfInterpolation)
+
+# print(rbfInterpolation.shape)
+
+print(rbfInterpolation[1 * DEFAULT_SQUARE_SIZE + 100].shape)
