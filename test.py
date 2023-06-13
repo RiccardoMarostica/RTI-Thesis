@@ -38,10 +38,15 @@ def find_nearest(array, value):
     differences = np.abs(array - value)
     min_index = np.unravel_index(differences.argmin(), differences.shape)
     return array[min_index]
-        
+
+image = cv.imread("frame.jpg")
+
 while (True):
-    cv.imshow("Relight object", relightPlot)
-    cv.setMouseCallback("Relight object", mouseCallback)
+    cv.imshow("Relight plot", relightPlot)
+    cv.imshow("Relight image", image)
+    
+    cv.setMouseCallback("Relight plot", mouseCallback)
+    
     
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):
