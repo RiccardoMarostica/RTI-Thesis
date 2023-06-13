@@ -145,18 +145,8 @@ def main():
             rti.storeLightVector(worldFrame, lightVector)
         else:
             lightVector = []
-            
-        # cirlcePlot = rti.showCircleLightDirection(lightVector)
-            
-        # videoStatic.showFrame(staticFrame, "Static Frame", True)
-        # videoMoving.showFrame(movingFrame, "Moving Frame", True)
-        # cv.imshow("Circle Plot", cirlcePlot)
         
         iteration += 1
-        
-        # # Press Q on the keyboard to exit.
-        # if (cv.waitKey(25) & 0xFF == ord('q')):
-        #     break
     
     lightDirections = rti.getLightDirections()
     print("Frames aquired: ", len(lightDirections))
@@ -169,8 +159,63 @@ def main():
     
     print("RBF Interpolation done")
     
-    interpolation = rti.getRBFInterpolation()
-    np.save("interpolationMatrix", interpolation)
+    rbfInterpolation = rti.getRBFInterpolation()
+        
+    # Create a blank image
+    relightPlot = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 3), dtype=np.uint8)
+
+    center_x = center_y = DEFAULT_SQUARE_SIZE // 2
+    radius = DEFAULT_SQUARE_SIZE // 2    
+
+    # Draw the circle border
+    cv.circle(relightPlot, (center_x, center_y), radius, (255, 255, 255), 1)
+    cv.line(relightPlot, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
+    cv.line(relightPlot, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
+
+    def mouseCallback(event, x, y, flags, params):
+        if event == cv.EVENT_LBUTTONDOWN:
+            print(f"Choosen point: ({x}, {y})")
+            interpolationXY = rbfInterpolation[x * DEFAULT_SQUARE_SIZE + y]
+            # print(f"Interpolation at ({x}, {y}): \n", interpolationXY)
+            nearest_X = int(findNearest(interpolationXY, x))
+            nearest_Y = int(findNearest(interpolationXY, y))
+            print(f"Nearest point: ({nearest_X}, {nearest_Y})")
+            norm_X = normaliseCoordinate(nearest_X, DEFAULT_SQUARE_SIZE)
+            norm_Y = normaliseCoordinate(nearest_Y, DEFAULT_SQUARE_SIZE)
+            print(f"Normalised point: ({norm_X}, {norm_Y})")
+            lights = np.array([tmp.ligthVector for tmp in lightDirections])
+            index = findNearestFrame(lights, [norm_X, norm_Y])
+            print("Index: ", index)
+            cv.imshow("Relight image", lightDirections[index].frame)
+            
+
+    def findNearest(array, input_value):
+        differences = np.abs(array - input_value)
+        min_index = np.unravel_index(differences.argmin(), differences.shape)
+        return array[min_index]
+
+    def normaliseCoordinate(value, dim):
+        # Convert the coordinates to normalized values between -1 and 1
+        return (value / dim) * 2 - 1
+    
+    def findNearestFrame(array, input_values):
+        input_values = np.array(input_values)
+        array = np.array(array)
+        distances = np.linalg.norm(array[:, :2] - input_values, axis=1)
+        nearest_index = np.argmin(distances)
+        return nearest_index
+    
+    image = cv.imread("frame.jpg")
+
+    while (True):
+        cv.imshow("Relight plot", relightPlot)
+        cv.imshow("Relight image", image)
+        
+        cv.setMouseCallback("Relight plot", mouseCallback)
+        
+        # Press Q on the keyboard to exit.
+        if (cv.waitKey(25) & 0xFF == ord('q')):
+            break
     
     # release videos and destroy windows
     videoStatic.releaseVideo()

@@ -23,22 +23,17 @@ cv.line(relightPlot, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 
 def mouseCallback(event, x, y, flags, params):
     if event == cv.EVENT_LBUTTONDOWN:
         print(f"Choosen point: ({x}, {y})")
-        dis = distanceCalculate((center_x, center_y), (x, y))
-        print("Distance: ", dis)
         interpolationXY = rbfInterpolation[x * DEFAULT_SQUARE_SIZE + y]
-        print(f"Interpolation at ({x}, {y}): \n", interpolationXY)
-        nearest = find_nearest(interpolationXY, dis)
-        print("Nearest: ", nearest)
-           
-def distanceCalculate(p1, p2):
-    dis = ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
-    return dis
+        # print(f"Interpolation at ({x}, {y}): \n", interpolationXY)
+        nearest_X = int(findNearest(interpolationXY, x))
+        nearest_Y = int(findNearest(interpolationXY, y))
+        print(f"Nearest point: ({nearest_X}, {nearest_Y})")
 
-def find_nearest(array, value):
-    differences = np.abs(array - value)
+def findNearest(array, input_value):
+    differences = np.abs(array - input_value)
     min_index = np.unravel_index(differences.argmin(), differences.shape)
     return array[min_index]
-
+           
 image = cv.imread("frame.jpg")
 
 while (True):
@@ -46,7 +41,6 @@ while (True):
     cv.imshow("Relight image", image)
     
     cv.setMouseCallback("Relight plot", mouseCallback)
-    
     
     # Press Q on the keyboard to exit.
     if (cv.waitKey(25) & 0xFF == ord('q')):
