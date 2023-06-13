@@ -167,7 +167,7 @@ def main():
     
     rti.applRBFInterpolation(11, 11, DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE)
     
-    print("RBF Interpolation done)")
+    print("RBF Interpolation done")
     
     interpolation = rti.getRBFInterpolation()
     np.save("interpolationMatrix", interpolation)

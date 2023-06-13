@@ -206,13 +206,13 @@ class RTI:
         lightDirections = self.getLightDirections()
              
         # Get each value x and y in the light vector array   
-        lx = np.array([tmp.ligthVector[0] for tmp in lightDirections])
-        ly = np.array([tmp.ligthVector[1] for tmp in lightDirections])
+        lx = np.float32([tmp.ligthVector[0] for tmp in lightDirections])
+        ly = np.float32([tmp.ligthVector[1] for tmp in lightDirections])
                 
         # Now double loop to iterate along all the frame, and given the intensity at the pixel (u, v), calculate RBF Interpolation
         for u in range(nu):
             for v in range (nv):
-                i = np.array([tmp.frame[u, v] for tmp in lightDirections])
+                i = np.float32([tmp.frame[u, v] for tmp in lightDirections])
                 r = Rbf(lx, ly, i, function='linear')
                 i_interpolate = r(lxf, lyf)
                 self.rbfInterpolation.append(i_interpolate)
