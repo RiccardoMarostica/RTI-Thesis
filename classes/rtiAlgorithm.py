@@ -173,19 +173,19 @@ class RTI:
             
     def showCircleLightDirection(self, light_direction):    
         # Create a blank image
-        image = np.zeros((DEFAULT_ASPECT_RATIO, DEFAULT_ASPECT_RATIO, 3), dtype=np.uint8)
+        image = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 3), dtype=np.uint8)
 
-        center_x = center_y = DEFAULT_ASPECT_RATIO // 2
-        radius = DEFAULT_ASPECT_RATIO // 2    
+        center_x = center_y = DEFAULT_SQUARE_SIZE // 2
+        radius = DEFAULT_SQUARE_SIZE // 2    
             
         # Draw the circle border
         cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 1)
-        cv.line(image, (0, center_y), (DEFAULT_ASPECT_RATIO, center_y), (255, 255, 255), 1)
-        cv.line(image, (center_x, 0), (center_x, DEFAULT_ASPECT_RATIO), (255, 255, 255), 1)
+        cv.line(image, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
+        cv.line(image, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
         
         if len(light_direction) != 0:
-            x = int(((light_direction[0][0] + 1) * DEFAULT_ASPECT_RATIO) / 2)
-            y = int(((light_direction[1][0] + 1) * DEFAULT_ASPECT_RATIO) / 2)        
+            x = int(((light_direction[0][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)
+            y = int(((light_direction[1][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)        
             cv.putText(image, "P = (" + str(x) + ", " + str(y) + ")", (30, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
             cv.circle(image, (int(x), int(y)), 2, (0, 255, 0), -1)
             cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 1)

@@ -172,21 +172,24 @@ def main():
     cv.line(relightPlot, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
     cv.line(relightPlot, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
 
+    frameImage = cv.imread("frame.jpg")
+    
     def mouseCallback(event, x, y, flags, params):
         if event == cv.EVENT_LBUTTONDOWN:
             print(f"Choosen point: ({x}, {y})")
             interpolationXY = rbfInterpolation[x * DEFAULT_SQUARE_SIZE + y]
             # print(f"Interpolation at ({x}, {y}): \n", interpolationXY)
-            nearest_X = int(findNearest(interpolationXY, x))
-            nearest_Y = int(findNearest(interpolationXY, y))
+            nearest_X = findNearest(interpolationXY, x)
+            nearest_Y = findNearest(interpolationXY, y)
             print(f"Nearest point: ({nearest_X}, {nearest_Y})")
             norm_X = normaliseCoordinate(nearest_X, DEFAULT_SQUARE_SIZE)
             norm_Y = normaliseCoordinate(nearest_Y, DEFAULT_SQUARE_SIZE)
             print(f"Normalised point: ({norm_X}, {norm_Y})")
             lights = np.array([tmp.ligthVector for tmp in lightDirections])
+            print("Lights: ", len(lights))
             index = findNearestFrame(lights, [norm_X, norm_Y])
             print("Index: ", index)
-            cv.imshow("Relight image", lightDirections[index].frame)
+            cv.imshow("Relighted image", lightDirections[index].frame)
             
 
     def findNearest(array, input_value):
@@ -200,18 +203,19 @@ def main():
     
     def findNearestFrame(array, input_values):
         input_values = np.array(input_values)
-        array = np.array(array)
-        distances = np.linalg.norm(array[:, :2] - input_values, axis=1)
+        print(f"Array shape: {array.shape}, Input array shape: {input_values}")
+        distances = np.linalg.norm(array[:, :2, :] - input_values.reshape(1, 2, 1), axis=1)
         nearest_index = np.argmin(distances)
         return nearest_index
     
-    image = cv.imread("frame.jpg")
 
     while (True):
         cv.imshow("Relight plot", relightPlot)
-        cv.imshow("Relight image", image)
         
         cv.setMouseCallback("Relight plot", mouseCallback)
+        
+        
+        cv.imshow("Relight image", frameImage)
         
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
