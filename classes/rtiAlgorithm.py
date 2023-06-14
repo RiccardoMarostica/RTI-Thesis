@@ -220,4 +220,69 @@ class RTI:
         pass
 
     def getRBFInterpolation(self):
+        # Return the RBF Array computed before
         return self.rbfInterpolation
+    
+    def findNearestPoint(self, interpolation, value):
+        # Return the nearest point from value inside the interpolation
+        differences = np.abs(interpolation - value)
+        min_index = np.unravel_index(differences.argmin(), differences.shape)
+        # return nearest point
+        return interpolation[min_index]
+    
+    def findNearestFrame(self, array, input_values):
+        input_values = np.array(input_values)
+        distances = np.linalg.norm(array[:, :2, :] - input_values.reshape(1, 2, 1), axis=1)
+        nearest_index = np.argmin(distances)
+        return nearest_index
+    
+    def normaliseCoordinate(self, value, dim):
+        # Convert the coordinates to normalized values between -1 and 1
+        return (value / dim) * 2 - 1
+    
+    def applyRelighting(self):
+        # Create a blank image
+        relightPlot = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 3), dtype=np.uint8)
+
+        center_x = center_y = DEFAULT_SQUARE_SIZE // 2
+        radius = DEFAULT_SQUARE_SIZE // 2    
+
+        # Draw the circle border
+        cv.circle(relightPlot, (center_x, center_y), radius, (255, 255, 255), 1)
+        cv.line(relightPlot, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
+        cv.line(relightPlot, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
+        
+        while(True):
+            cv.imshow("Relight plot", relightPlot)
+            cv.setMouseCallback("Relight plot", self.calculateRelightingFrame)
+            # Press Q on the keyboard to exit.
+            if (cv.waitKey(25) & 0xFF == ord('q')):
+                break
+            
+        return
+        
+    def calculateRelightingFrame(self, event, x, y, flags, params):
+        if event == cv.EVENT_LBUTTONDOWN:
+            # Get the array containing the information about relighting    
+            rbfInterpolation = self.getRBFInterpolation()
+            # ... and light direction array
+            lightDirections = self.getLightDirections()
+            
+            # Get the interpolation 11 x 11 vector, to search the nearest value
+            interpolationXY = rbfInterpolation[x * DEFAULT_SQUARE_SIZE + y]
+            
+            # Compute nearest value for the coordinates X and Y
+            nearest_X = self.findNearestPoint(interpolationXY, x)
+            nearest_Y = self.findNearestPoint(interpolationXY, y)
+            
+            # Then compute the normalised coordinates (convert from [0, ..., 255] to [0, ..., 1])
+            norm_X = self.normaliseCoordinate(nearest_X, DEFAULT_SQUARE_SIZE)
+            norm_Y = self.normaliseCoordinate(nearest_Y, DEFAULT_SQUARE_SIZE)
+            
+            # Recover the lights from the array of light directions
+            lights = np.array([tmp.ligthVector for tmp in lightDirections])
+            
+            # Get the nearest frame
+            index = self.findNearestFrame(lights, [norm_X, norm_Y])
+            # ... and show it
+            cv.imshow("Relighted image", lightDirections[index].frame)
