@@ -284,5 +284,7 @@ class RTI:
             
             # Get the nearest frame
             index = self.findNearestFrame(lights, [norm_X, norm_Y])
+            
+            frame = lightDirections[index].frame
             # ... and show it
-            cv.imshow("Relighted image", lightDirections[index].frame)
+            cv.imshow("Relighted image", frame)

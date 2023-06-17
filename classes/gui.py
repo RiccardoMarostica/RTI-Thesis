@@ -22,23 +22,14 @@ class MainWindow (QWidget):
         self.layoutWidgets = QStackedLayout()
         
         self.homepage = self.initialiseHomepage()
-        self.help = self.initaliseHelp()
+        # self.help = self.initaliseHelp()
+        self.calibration = self.initialiseCalibration()
         
         self.layoutWidgets.addWidget(self.homepage)
-        self.layoutWidgets.addWidget(self.help)
-        
-        # # Button to switch between widgets
-        # self.swithButton = QPushButton("Switch window")
-        # self.swithButton.clicked.connect(self.switchWidgets)
-        # self.swithButton.setFixedSize(100, 100)
-
-        # self.layoutWidgets.addWidget(self.swithButton)
-        # self.layoutWidgets.addWidget(self.wid1)
-        # self.layoutWidgets.addWidget(self.wid2)
+        self.layoutWidgets.addWidget(self.calibration)
+        # self.layoutWidgets.addWidget(self.help)
         
         self.setLayout(self.layoutWidgets)
-        
-        # self.frontWidget = 1
         
         self.showHomepage()
         
@@ -48,7 +39,6 @@ class MainWindow (QWidget):
     def initialiseHomepage(self) -> QWidget:
         # Create layout widget
         homepage = QWidget()
-        # homepage.setGeometry(0, 0, WINDOW_WIDTH - 10, WINDOW_HEIGHT - 10)
         
         # Create vertical box layout instance
         layout = QVBoxLayout()
@@ -57,13 +47,13 @@ class MainWindow (QWidget):
         start = QPushButton('Begin with RTI')
         start.clicked.connect(self.showCalibration)
 
-        # Set Help button
-        help = QPushButton('Help & Information')
-        help.clicked.connect(self.showHelp)
+        # # Set Help button
+        # help = QPushButton('Help & Information')
+        # help.clicked.connect(self.showHelp)
         
         # Add everything to the layout
         layout.addWidget(start)
-        layout.addWidget(help)
+        # layout.addWidget(help)
         
         homepage.setLayout(layout)
         
@@ -72,7 +62,7 @@ class MainWindow (QWidget):
     
     def showHomepage(self):
         self.homepage.show()
-        self.help.hide()
+        # self.help.hide()
         pass
     
     def initaliseHelp(self) -> QWidget:
@@ -97,8 +87,55 @@ class MainWindow (QWidget):
         self.homepage.hide()
         pass
     
+    def initialiseCalibration(self):
+        # Window widget
+        window = QWidget()
+        # Set window size as the parent
+        window.setGeometry(self.geometry())
+        
+        # Create the master vertical box
+        # Inside here add all the components of the window
+        masterVBoxLayout = QVBoxLayout()
+        
+        # Static Camera horizontal box
+        stcmHBoxLayout = QHBoxLayout()
+        # Description label
+        stcmLabel = QLabel()
+        stcmLabel.setText('Static Camera calibration video')
+        # Input button
+        stcmUploadBtn = QPushButton('Load video')
+        # Add widgets to layout
+        stcmHBoxLayout.addWidget(stcmLabel)
+        # stcmHBoxLayout.addStretch()
+        stcmHBoxLayout.addWidget(stcmUploadBtn)
+        
+        # Static Camera horizontal box
+        mvcmHBoxLayout = QHBoxLayout()
+        # Description label
+        mvcmLabel = QLabel()
+        mvcmLabel.setText('Moving Camera calibration video')
+        # Input button
+        mvcmUploadBtn = QPushButton('Load video')
+        # Add widgets to layout
+        mvcmHBoxLayout.addWidget(mvcmLabel)
+        # mvcmHBoxLayout.addStretch()
+        mvcmHBoxLayout.addWidget(mvcmUploadBtn)
+        
+        # Lastly, add layouts to master layout
+        masterVBoxLayout.addLayout(stcmHBoxLayout)
+        masterVBoxLayout.addStretch()
+        masterVBoxLayout.addLayout(mvcmHBoxLayout)
+        masterVBoxLayout.addStretch()
+        
+        # Use the layout on the widget
+        window.setLayout(masterVBoxLayout)
+        
+        # ... and return it
+        return window
+    
     def showCalibration(self):
-        print("Calibration clicked")
+        self.calibration.show()
+        self.homepage.hide()
         pass
     
     def showWaiting(self):

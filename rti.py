@@ -179,5 +179,5 @@ def initaliseMainWindow():
     
     
 if __name__ == "__main__":
-    # initaliseMainWindow()
-    main()
+    initaliseMainWindow()
+    # main()
