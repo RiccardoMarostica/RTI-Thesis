@@ -1,5 +1,5 @@
-STATIC_VIDEO_CALIBRATION_FILE_PATH = ""
-MOVING_VIDEO_CALIBRATION_FILE_PATH = ""
+STATIC_VIDEO_CALIBRATION_FILE_PATH = "./video/cam-static/calibration.mp4"
+MOVING_VIDEO_CALIBRATION_FILE_PATH = "./video/cam-moving/calibration.mp4"
 
 STATIC_VIDEO_FILE_PATH = "./video/cam-static/static.mov"
 MOVING_VIDEO_FILE_PATH = "./video/cam-moving/moving.mov"

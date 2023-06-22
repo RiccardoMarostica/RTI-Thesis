@@ -260,11 +260,11 @@ class MainWindow (QWidget):
         
         print("First: Perform Video Synchonisation...")
             
-        # Create class to synch the videos
-        videoSynchronisation = VideoSynchronisation(videoStaticPath, videoMovingPath)
+        # # Create class to synch the videos
+        # videoSynchronisation = VideoSynchronisation(videoStaticPath, videoMovingPath)
         
-        # ... and them synch them
-        videoSynchronisation.synchroniseVideo()
+        # # ... and them synch them
+        # videoSynchronisation.synchroniseVideo()
         
         print("Video Synchonisation done without errors")
         
@@ -273,7 +273,8 @@ class MainWindow (QWidget):
         defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
         
         # ... and then compute the shift between the videos
-        frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
+        # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
+        frameDifference = 33
     
         print("Frame difference: ", frameDifference)
         
@@ -294,8 +295,15 @@ class MainWindow (QWidget):
         pass
     
     def getFile(self, type: str):
+        """The function stores the input path of a selected file into the Parameter class.
+        
+        Args:
+            type (str): Describe in which file the input path will be stored
+        """
+        # Use QFileDilaog to get the file name and path
         fname = QFileDialog.getOpenFileName(self, 'Open file')
         
+        # Store the path inside the Parameter class, according to type parameters
         if type == 'calibration-static':
             self.parameters.setStaticCameraCalibrationPath(fname[0])
         elif type == 'calibration-moving':
