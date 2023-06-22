@@ -16,18 +16,18 @@ from constants import *
 
 def main():
     
-    print("Starting camera calibration...")
+    # print("Starting camera calibration...")
     
-    # Get the two calibrations for both static and moving camera
-    calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
-    calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
+    # # Get the two calibrations for both static and moving camera
+    # calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
+    # calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
     
-    # Calibrate cameras and check result
-    if (calibrationStatic.calibrateCamera() == False or calibrationMoving.calibrateCamera() == False):
-        print("Error when calibrating one of the two cameras. ")
-        exit(-1)
-    else:
-        print("Camera calibration completed without errors")
+    # # Calibrate cameras and check result
+    # if (calibrationStatic.calibrateCamera() == False or calibrationMoving.calibrateCamera() == False):
+    #     print("Error when calibrating one of the two cameras. ")
+    #     exit(-1)
+    # else:
+    #     print("Camera calibration completed without errors")
         
     # Create the two videos
     videoStatic = Video(STATIC_VIDEO_FILE_PATH)
@@ -50,20 +50,20 @@ def main():
     else:
         print("Homography calculated without errors")
     
-    print("Starting video synchronisation...")
+    # print("Starting video synchronisation...")
     
-    # Create class to synch the videos
-    videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
-    # ... and them synch them
-    videoSynchronisation.synchroniseVideo()
+    # # Create class to synch the videos
+    # videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
+    # # ... and them synch them
+    # videoSynchronisation.synchroniseVideo()
     
-    print("Video synchronisation completed without errors")
+    # print("Video synchronisation completed without errors")
     
-    # After synchronisation, get the offset between the two videos
-    # First get the default FPS
-    defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
-    # ... and then compute the shift between the videos
-    frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
+    # # After synchronisation, get the offset between the two videos
+    # # First get the default FPS
+    # defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
+    # # ... and then compute the shift between the videos
+    # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
     
     frameDifference = 33
     
