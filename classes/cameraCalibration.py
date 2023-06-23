@@ -108,11 +108,19 @@ class CameraCalibration:
         if(len(objectPoints) != len(imagePoints)):
             return False
 
-        # After completing the
+        # After retrieving the 3D <--> 2D correspondences, it's possible to calibrate the camera
         # Parameters:
         # matrix -> 3x3 floating point camera intrinsic parameters matrix (remember that scale is equal to 0 by default)
         # dist -> vector of distortion coefficients
-        ret, matrix, dist, vecs, tvecs = cv.calibrateCamera(objectPoints, imagePoints, grayFrame.shape[::-1], None, None)
+        ret, matrix, dist, rvecs, tvecs = cv.calibrateCamera(objectPoints, imagePoints, grayFrame.shape[::-1], None, None)
+
+        # Before returning, calculate the re-projection error, which is a good estimation of just how exact the found parameters are.
+        # The closer the error is to zero, the more accurate the parameters found are.
+        self.meanError = 0
+        for i in range(len(objectPoints)):
+            imagePoints2, _ = cv.projectPoints(objectPoints[i], rvecs[i], tvecs[i], matrix, dist)
+            error = cv.norm(imagePoints[i], imagePoints2, cv.NORM_L2) / len(imagePoints2)
+            self.meanError += error
 
         # Store in the class field both instrinsic matrix and distortion coefficients
         self.intrinsicParameters = matrix
@@ -138,3 +146,12 @@ class CameraCalibration:
             list: A 5 parameters list used to perform iamge undistortion.
         """
         return self.distortionCoefficients
+
+    def getReProjectionError(self) -> float:
+        """The function returns the re-projection error, which is a good estimation of just how exact the found parameters are.
+        The closer the error is to zero, the more accurate the parameters found are.
+
+        Returns:
+            float: Re-projection error value
+        """
+        return self.meanError

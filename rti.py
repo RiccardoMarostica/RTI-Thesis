@@ -16,18 +16,18 @@ from constants import *
 
 def main():
     
-    # print("Starting camera calibration...")
+    print("Starting camera calibration...")
     
-    # # Get the two calibrations for both static and moving camera
-    # calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
-    # calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
+    # Get the two calibrations for both static and moving camera
+    calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
+    calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
     
-    # # Calibrate cameras and check result
-    # if (calibrationStatic.calibrateCamera() == False or calibrationMoving.calibrateCamera() == False):
-    #     print("Error when calibrating one of the two cameras. ")
-    #     exit(-1)
-    # else:
-    #     print("Camera calibration completed without errors")
+    # Calibrate cameras and check result
+    if (calibrationStatic.calibrateCamera() == False or calibrationMoving.calibrateCamera() == False):
+        print("Error when calibrating one of the two cameras. ")
+        exit(-1)
+    else:
+        print("Camera calibration completed without errors")
         
     # Create the two videos
     videoStatic = Video(STATIC_VIDEO_FILE_PATH)
