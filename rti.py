@@ -149,6 +149,7 @@ def main():
         iteration += 1
     
     lightDirections = rti.getLightDirections()
+    
     print("Frames aquired: ", len(lightDirections))
     
     print("Calculation of the light directions completed without errors")
@@ -179,5 +180,5 @@ def initaliseMainWindow():
     
     
 if __name__ == "__main__":
-    # initaliseMainWindow()
-    main()
+    initaliseMainWindow()
+    # main()
