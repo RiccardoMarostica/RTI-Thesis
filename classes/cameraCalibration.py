@@ -21,7 +21,7 @@ class CameraCalibration:
     milliseconds = 0
 
     def __init__(self, video : Video, corners : tuple, debug = False):
-        """The constructor takes in input A Video class, containing a Video instance from OpenCv and a tuple indicating the number of corners in the Calibration target (A chessboard, etc...)
+        """The constructor takes in input a Video class, containing a Video instance from OpenCv and a tuple indicating the number of corners in the Calibration target (A chessboard, etc...)
 
         Args:
             video (Video): Video Class instance, containing the Video for Camera Calibration

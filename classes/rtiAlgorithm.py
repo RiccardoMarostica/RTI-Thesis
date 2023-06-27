@@ -390,14 +390,9 @@ class RTI:
             # Get the interpolation 11 x 11 vector, to search the nearest value
             interpolationXY = rbfInterpolation[x * DEFAULT_SQUARE_SIZE + y]
             
-            print(interpolationXY)
-            
             # Compute nearest value for the coordinates X and Y
             nearest_X = self.findNearestPoint(interpolationXY, x)
             nearest_Y = self.findNearestPoint(interpolationXY, y)
-            
-            print(nearest_X)
-            print(nearest_Y)
             
             # Then compute the normalised coordinates
             norm_X = self.normaliseCoordinate(nearest_X, DEFAULT_SQUARE_SIZE)

@@ -50,22 +50,20 @@ def main():
     else:
         print("Homography calculated without errors")
     
-    # print("Starting video synchronisation...")
+    print("Starting video synchronisation...")
     
-    # # Create class to synch the videos
-    # videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
-    # # ... and them synch them
-    # videoSynchronisation.synchroniseVideo()
+    # Create class to synch the videos
+    videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
+    # ... and them synch them
+    videoSynchronisation.synchroniseVideo()
     
-    # print("Video synchronisation completed without errors")
+    print("Video synchronisation completed without errors")
     
-    # # After synchronisation, get the offset between the two videos
-    # # First get the default FPS
-    # defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
-    # # ... and then compute the shift between the videos
-    # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
-    
-    frameDifference = 33
+    # After synchronisation, get the offset between the two videos
+    # First get the default FPS
+    defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
+    # ... and then compute the shift between the videos
+    frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
     
     print("Frame difference: ", frameDifference)
     
@@ -180,5 +178,5 @@ def initaliseMainWindow():
     
     
 if __name__ == "__main__":
-    initaliseMainWindow()
-    # main()
+    # initaliseMainWindow()
+    main()
