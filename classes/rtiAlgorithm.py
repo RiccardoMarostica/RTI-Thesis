@@ -83,10 +83,6 @@ class RTI:
             cv.imshow("Point detection", frame)
             cv.setMouseCallback("Point detection", self.getPointFromImage, param=[points])
 
-            # Press Q on the keyboard to exit.
-            if (cv.waitKey(25) & 0xFF == ord('q')):
-                break
-
             # For simplicity, draw lines between points
             for i in range(len(points)):
                 cv.line(frame, tuple(points[i].astype(int)), tuple(points[(i + 1) % len(points)].astype(int)), (0, 0, 255), 3)
@@ -108,12 +104,21 @@ class RTI:
                 # Now we compute the Homography between the World system and the Static Camera
                 homograhy, _ = cv.findHomography(points, destinationPoints)
 
+                # Destroy the window used to retrieve the points
+                # cv.destroyWindow("Point detection")
+                cv.destroyAllWindows()
+                    
+                # Press Q on the keyboard to exit.
+                if (cv.waitKey(25) & 0xFF == ord('q')):
+                    break
+                
                 # Break inner while since we get them and we computed the Homography
+                break    
+            
+            # Press Q on the keyboard to exit.
+            if (cv.waitKey(25) & 0xFF == ord('q')):
                 break
 
-        # Destroy the window used to retrieve the points
-        cv.destroyWindow("Point detection")
-        cv.destroyAllWindows()
 
         # Return the homography, even if not defined (None)
         return homograhy
@@ -180,18 +185,20 @@ class RTI:
         except:
             # If an error occurs in the calculation of the matches, just return an empty array corresponding to empty homography
             return []
-
-        # Remove outliers from the matches, to gain accuracy
-        goodMatches = []
+        
+        src = []
+        dst = []
+        
         for m1, m2 in matches:
             if m1.distance < 0.7 * m2.distance:
-                goodMatches.append(m1)
+                src.append(keypoints1[m1.queryIdx].pt)
+                dst.append(keypoints2[m1.trainIdx].pt)
 
         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
-        if len(goodMatches) > MIN_MATCH_COUNT:
+        if len(src) > MIN_MATCH_COUNT:
             # Get source and destination points found inside the good matches to build the homography between the two frames
-            src = np.float32([keypoints1[m.queryIdx].pt for m in goodMatches]).reshape(-1, 1, 2)
-            dst = np.float32([keypoints2[m.trainIdx].pt for m in goodMatches]).reshape(-1, 1, 2)
+            src = np.float32(src).reshape(-1, 1, 2)
+            dst = np.float32(dst).reshape(-1, 1, 2)
             
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)            
@@ -252,16 +259,13 @@ class RTI:
         radius = DEFAULT_SQUARE_SIZE // 2    
             
         # Draw the circle border
-        cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 1)
-        cv.line(image, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
-        cv.line(image, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
+        cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 2)
         
         if len(light_direction) != 0:
             x = int(((light_direction[0][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)
             y = int(((light_direction[1][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)        
-            cv.putText(image, "P = (" + str(x) + ", " + str(y) + ")", (30, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
-            cv.circle(image, (int(x), int(y)), 2, (0, 255, 0), -1)
-            cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 1)
+            cv.circle(image, (int(x), int(y)), 10, (0, 255, 0), 2)
+            cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2)
         
         return image
 
@@ -383,16 +387,18 @@ class RTI:
         """
         if event == cv.EVENT_LBUTTONDOWN:
             # Get the array containing the information about relighting    
-            rbfInterpolation = self.getRBFInterpolation()
+            # rbfInterpolation = self.getRBFInterpolation()
             # ... and light direction array
             lightDirections = self.getLightDirections()
             
-            # Get the interpolation 11 x 11 vector, to search the nearest value
-            interpolationXY = rbfInterpolation[x * DEFAULT_SQUARE_SIZE + y]
+            # # Get the interpolation 11 x 11 vector, to search the nearest value
+            # interpolationXY = rbfInterpolation[x * DEFAULT_SQUARE_SIZE + y]
             
-            # Compute nearest value for the coordinates X and Y
-            nearest_X = self.findNearestPoint(interpolationXY, x)
-            nearest_Y = self.findNearestPoint(interpolationXY, y)
+            # # Compute nearest value for the coordinates X and Y
+            # nearest_X = self.findNearestPoint(interpolationXY, x)
+            # nearest_Y = self.findNearestPoint(interpolationXY, y)
+            nearest_X = x
+            nearest_Y = y
             
             # Then compute the normalised coordinates
             norm_X = self.normaliseCoordinate(nearest_X, DEFAULT_SQUARE_SIZE)
@@ -405,5 +411,10 @@ class RTI:
             index = self.findNearestFrame(lights, [norm_X, norm_Y])
             
             frame = lightDirections[index].frame
+            
             # ... and show it
             cv.imshow("Relighted image", frame)
+            
+            
+# TODO:
+# 1. Visualizzare al movimento del mouse il cambiamento del frame + direzione del light vector -> FARE DEBUGGING
