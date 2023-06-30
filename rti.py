@@ -2,7 +2,8 @@
 import cv2 as cv
 import numpy as np
 import sys
-import time
+import os
+import datetime
 
 from PyQt6.QtWidgets import QApplication
 
@@ -17,6 +18,10 @@ from constants import *
 
 def main():
     
+    # Create directory to stor history and save intermediate results (TESTING PURPOSE)
+    directory = "./history/" + datetime.datetime.now().date().strftime()
+    os.mkdir(directory)
+    
     # print("Starting camera calibration...")
     
     # # Get the two calibrations for both static and moving camera
@@ -29,13 +34,15 @@ def main():
     #     exit(-1)
     # else:
     #     print("Camera calibration completed without errors")
-        
+    
     # Create the two videos
     videoStatic = Video(STATIC_VIDEO_FILE_PATH)
     videoMoving = Video(MOVING_VIDEO_FILE_PATH)
     
+    
+    
     # Initialise RTI class
-    rti = RTI()    
+    rti = RTI()
     
     # TODO: Only for testing purpose
     defaultK = rti.getDefaultK(videoMoving)
@@ -117,6 +124,9 @@ def main():
             if timeMovingVideo > timeStaticVideo + (1. / videoMoving.getFPS()):
                 retMoving, movingFrame = videoMoving.getCurrentFrame()
     
+        staticFrame = cv.GaussianBlur(staticFrame, (5, 5), 0)
+        movingFrame = cv.GaussianBlur(movingFrame, (5, 5), 0)
+    
         # TODO: Apply undistortion
         
         # Convert frames to grayscale
@@ -148,8 +158,6 @@ def main():
         
         iteration += 1
         
-        print("Ligth vector: ", lightVector)
-        
         cirlePlot = rti.showCircleLightDirection(lightVector)
         
         cv.imshow('Light plot', cirlePlot)
@@ -161,9 +169,9 @@ def main():
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
         
-        # Press S to continue to the next view
-        if cv.waitKey(0) & 0xFF == ord('s'):
-            continue
+        # # Press S to continue to the next view
+        # if cv.waitKey(0) & 0xFF == ord('s'):
+        #     continue
 
     
     # lightDirections = rti.getLightDirections()

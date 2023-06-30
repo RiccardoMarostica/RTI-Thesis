@@ -20,6 +20,7 @@ class RTI:
         # Create methods to perform feature matching
         self.sift = cv.SIFT_create()
         self.flann = cv.FlannBasedMatcher_create()
+        self.bruteforce = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
         
         self.lightDirections : list[LightDirection] = []
         pass
@@ -182,6 +183,7 @@ class RTI:
 
             # Feature matching using KNN (K-Nearest-Neighborhood) technique of FLANN
             matches = self.flann.knnMatch(descriptors1, descriptors2, k=2)
+            # matches = self.bruteforce.match(descriptors1, descriptors2)
         except:
             # If an error occurs in the calculation of the matches, just return an empty array corresponding to empty homography
             return []
