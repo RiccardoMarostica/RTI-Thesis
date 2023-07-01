@@ -6,8 +6,9 @@ from constants import *
 from classes.video import Video
 
 class LightDirection:
-    def __init__(self, frame, lightVector) -> None:
+    def __init__(self, frame, staticFrame, lightVector) -> None:
         self.frame = frame
+        self.staticFrame = staticFrame
         self.ligthVector = lightVector
         pass
 
@@ -191,10 +192,12 @@ class RTI:
         src = []
         dst = []
         
+        goodMatches = []
         for m1, m2 in matches:
             if m1.distance < 0.7 * m2.distance:
                 src.append(keypoints1[m1.queryIdx].pt)
                 dst.append(keypoints2[m1.trainIdx].pt)
+                goodMatches.append(m1)
 
         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
         if len(src) > MIN_MATCH_COUNT:
@@ -203,7 +206,19 @@ class RTI:
             dst = np.float32(dst).reshape(-1, 1, 2)
             
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
-            homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)            
+            homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)     
+                        
+            # Draw matches
+            img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
+            cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+
+            cv.imshow('Good Matches', img_matches)
+            
+            # Press Q on the keyboard to exit.
+            if (cv.waitKey(25) & 0xFF == ord('q')):
+                return homography
+            
+                   
             return homography
         else:
             return []
@@ -227,14 +242,14 @@ class RTI:
         lightVector = l / norm_l
         return lightVector
         
-    def storeLightVector(self, frame, lightVector):
+    def storeLightVector(self, frame, staticFrame, lightVector):
         """The function stores the information about a light vector and the respective frame, which will be used later to perform religthing.
         
         Args:
             frame (Any): Frame related to a specific light vector
             lightVector (Any): Light vector computed from Camera Pose
         """
-        self.lightDirections.append(LightDirection(frame, lightVector))
+        self.lightDirections.append(LightDirection(frame, staticFrame, lightVector))
         
     def getLightDirections(self) -> list[LightDirection]:
         """The function returns the list of all the pairs (light vector, related frame) stored during the analysis process.
@@ -360,19 +375,22 @@ class RTI:
     def applyRelighting(self):
         """The function show the relighting of the image
         """
-        relightPlot = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 3), dtype=np.uint8)
-
+        
         center_x = center_y = DEFAULT_SQUARE_SIZE // 2
         radius = DEFAULT_SQUARE_SIZE // 2    
 
-        # Draw the circle border
-        cv.circle(relightPlot, (center_x, center_y), radius, (255, 255, 255), 1)
-        cv.line(relightPlot, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
-        cv.line(relightPlot, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
         
         while(True):
-            cv.imshow("Relight plot", relightPlot)
-            cv.setMouseCallback("Relight plot", self.calculateRelightingFrame)
+            # Draw plot image
+            self.relightPlot = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 3), dtype=np.uint8)
+            # Draw the circle border
+            cv.circle(self.relightPlot, (center_x, center_y), radius, (255, 255, 255), 1)
+            cv.line(self.relightPlot, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
+            cv.line(self.relightPlot, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
+            
+            
+            cv.imshow("Relight plot", self.relightPlot)
+            cv.setMouseCallback("Relight plot", self.calculateRelightingFrame, param=[center_x, center_y])
             # Press Q on the keyboard to exit.
             if (cv.waitKey(25) & 0xFF == ord('q')):
                 break
@@ -387,7 +405,16 @@ class RTI:
             x (int): x coordinate
             y (int): y coordinate
         """
-        if event == cv.EVENT_LBUTTONDOWN:
+        if event == cv.EVENT_MOUSEMOVE:
+            
+            # Get information from parameters
+            center_x = params[0]
+            center_y = params[1]
+            
+            # Draw the point
+            cv.circle(self.relightPlot, (int(x), int(y)), 10, (0, 255, 0), 2)
+            cv.line(self.relightPlot, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2)
+
             # Get the array containing the information about relighting    
             # rbfInterpolation = self.getRBFInterpolation()
             # ... and light direction array
@@ -406,16 +433,23 @@ class RTI:
             norm_X = self.normaliseCoordinate(nearest_X, DEFAULT_SQUARE_SIZE)
             norm_Y = self.normaliseCoordinate(nearest_Y, DEFAULT_SQUARE_SIZE)
             
+            print("Normalised coordinates: ", str([norm_X, norm_Y]))
+            
             # Recover the lights from the array of light directions
             lights = np.array([tmp.ligthVector for tmp in lightDirections])
-            
+                        
             # Get the nearest frame
             index = self.findNearestFrame(lights, [norm_X, norm_Y])
             
+            print("Nearest light index: ", str(index))
+            print("Nearest light value: ", str(lightDirections[index].ligthVector))
+            
             frame = lightDirections[index].frame
+            staticFrame = cv.resize(lightDirections[index].staticFrame, (480, 960))
             
             # ... and show it
             cv.imshow("Relighted image", frame)
+            cv.imshow("Static frame", staticFrame)
             
             
 # TODO:

@@ -18,9 +18,9 @@ from constants import *
 
 def main():
     
-    # Create directory to stor history and save intermediate results (TESTING PURPOSE)
-    directory = "./history/" + datetime.datetime.now().date().strftime()
-    os.mkdir(directory)
+    # # Create directory to stor history and save intermediate results (TESTING PURPOSE)
+    # directory = "./history/" + datetime.datetime.now().date().strftime()
+    # os.mkdir(directory)
     
     # print("Starting camera calibration...")
     
@@ -38,8 +38,6 @@ def main():
     # Create the two videos
     videoStatic = Video(STATIC_VIDEO_FILE_PATH)
     videoMoving = Video(MOVING_VIDEO_FILE_PATH)
-    
-    
     
     # Initialise RTI class
     rti = RTI()
@@ -152,7 +150,7 @@ def main():
             # Get the light vector
             lightVector = rti.getLightVector(R, T)
             # ... and store it inside the light directions
-            rti.storeLightVector(worldFrame, lightVector)
+            rti.storeLightVector(worldFrame, staticFrame, lightVector)
         else:
             lightVector = []
         
@@ -162,8 +160,8 @@ def main():
         
         cv.imshow('Light plot', cirlePlot)
         cv.imshow('World frame', worldFrame)
-        cv.imshow('Static camera', cv.resize(staticFrame,(480, 960)))
-        cv.imshow('Moving camera', cv.resize(movingFrame,(480, 960)))
+        # cv.imshow('Static camera', cv.resize(staticFrame,(480, 960)))
+        # cv.imshow('Moving camera', cv.resize(movingFrame,(480, 960)))
         
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
@@ -173,6 +171,7 @@ def main():
         # if cv.waitKey(0) & 0xFF == ord('s'):
         #     continue
 
+    cv.destroyAllWindows()
     
     # lightDirections = rti.getLightDirections()
 
@@ -186,7 +185,7 @@ def main():
     
     # print("RBF Interpolation done")
     
-    # rti.applyRelighting()
+    rti.applyRelighting()
     
     # release videos and destroy windows
     videoStatic.releaseVideo()
