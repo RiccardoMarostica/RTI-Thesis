@@ -208,11 +208,11 @@ class RTI:
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)     
                         
-            # Draw matches
-            img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
-            cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+            # # Draw matches
+            # img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
+            # cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
-            cv.imshow('Good Matches', img_matches)
+            # cv.imshow('Good Matches', img_matches)
             
             # Press Q on the keyboard to exit.
             if (cv.waitKey(25) & 0xFF == ord('q')):
@@ -391,9 +391,10 @@ class RTI:
             
             cv.imshow("Relight plot", self.relightPlot)
             cv.setMouseCallback("Relight plot", self.calculateRelightingFrame, param=[center_x, center_y])
+            
             # Press Q on the keyboard to exit.
             if (cv.waitKey(25) & 0xFF == ord('q')):
-                break
+                return
             
         return
         
@@ -407,13 +408,14 @@ class RTI:
         """
         if event == cv.EVENT_MOUSEMOVE:
             
-            # Get information from parameters
-            center_x = params[0]
-            center_y = params[1]
+            # # Get information from parameters
+            # center_x = params[0]
+            # center_y = params[1]
             
-            # Draw the point
-            cv.circle(self.relightPlot, (int(x), int(y)), 10, (0, 255, 0), 2)
-            cv.line(self.relightPlot, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2)
+            # # Draw the point
+            # cv.circle(self.relightPlot, (int(x), int(y)), 10, (0, 255, 0), 2)
+            # cv.line(self.relightPlot, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2)
+            
 
             # Get the array containing the information about relighting    
             # rbfInterpolation = self.getRBFInterpolation()

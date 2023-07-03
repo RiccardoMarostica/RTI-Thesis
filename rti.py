@@ -157,11 +157,20 @@ def main():
         iteration += 1
         
         cirlePlot = rti.showCircleLightDirection(lightVector)
+         
+        # if len(lightVector) != 0:
+        #     x = int(((lightVector[0][0] + 1) * videoStatic.getWidth()) / 2)
+        #     y = int(((lightVector[1][0] + 1) * videoStatic.getHeight()) / 2)
+        #     print(f"coordinates: ({x}, {y})")      
+        #     cv.circle(staticFrame, (int(x), int(y)), 10, (255, 0, 0), 5)
+        #     cv.line(staticFrame, (int(videoStatic.getWidth() / 2), int(videoStatic.getHeight() / 2)), (int(x), int(y)), (255, 0, 0), 5)
+        #     cv.putText(staticFrame, f"P=({x},{y})", (50, 50), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv.LINE_AA)
+        
         
         cv.imshow('Light plot', cirlePlot)
         cv.imshow('World frame', worldFrame)
-        # cv.imshow('Static camera', cv.resize(staticFrame,(480, 960)))
-        # cv.imshow('Moving camera', cv.resize(movingFrame,(480, 960)))
+        cv.imshow('Static camera', cv.resize(staticFrame,(480, 960)))
+        cv.imshow('Moving camera', cv.resize(movingFrame,(480, 960)))
         
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
