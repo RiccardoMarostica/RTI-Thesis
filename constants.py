@@ -1,8 +1,8 @@
 STATIC_VIDEO_CALIBRATION_FILE_PATH = "./video/cam-static/calibration.mp4"
 MOVING_VIDEO_CALIBRATION_FILE_PATH = "./video/cam-moving/calibration.mp4"
 
-STATIC_VIDEO_FILE_PATH = "./video/cam-static/static.mov"
-MOVING_VIDEO_FILE_PATH = "./video/cam-moving/moving.mov"
+STATIC_VIDEO_FILE_PATH = "./video/cam-static/coin1.mp4"
+MOVING_VIDEO_FILE_PATH = "./video/cam-moving/coin1.mp4"
 
 STATIC_VIDEO_PARAMS_PATH = "./parameters/static/"
 MOVING_VIDEO_PARAMS_PATH = "./parameters/moving/"

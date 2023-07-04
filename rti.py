@@ -18,22 +18,18 @@ from constants import *
 
 def main():
     
-    # # Create directory to stor history and save intermediate results (TESTING PURPOSE)
-    # directory = "./history/" + datetime.datetime.now().date().strftime()
-    # os.mkdir(directory)
+    print("Starting camera calibration...")
     
-    # print("Starting camera calibration...")
+    # Get the two calibrations for both static and moving camera
+    calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
+    calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
     
-    # # Get the two calibrations for both static and moving camera
-    # calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
-    # calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
-    
-    # # Calibrate cameras and check result
-    # if (calibrationStatic.calibrateCamera() == False or calibrationMoving.calibrateCamera() == False):
-    #     print("Error when calibrating one of the two cameras. ")
-    #     exit(-1)
-    # else:
-    #     print("Camera calibration completed without errors")
+    # Calibrate cameras and check result
+    if (calibrationStatic.calibrateCamera() == False or calibrationMoving.calibrateCamera() == False):
+        print("Error when calibrating one of the two cameras. ")
+        exit(-1)
+    else:
+        print("Camera calibration completed without errors")
     
     # Create the two videos
     videoStatic = Video(STATIC_VIDEO_FILE_PATH)
@@ -42,8 +38,10 @@ def main():
     # Initialise RTI class
     rti = RTI()
     
-    # TODO: Only for testing purpose
-    defaultK = rti.getDefaultK(videoMoving)
+    K = calibrationMoving.getIntrinsicMatrix()
+    
+    # Store the first frame of the Static Camera
+    _, firstStaticFrame = videoStatic.getCurrentFrame()
     
     # And try to get the 4 points in the static video
     worldHomography = rti.getWorldHomography(videoStatic)
@@ -54,22 +52,20 @@ def main():
     else:
         print("Homography calculated without errors")
     
-    # print("Starting video synchronisation...")
+    print("Starting video synchronisation...")
     
-    # # Create class to synch the videos
-    # videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
-    # # ... and them synch them
-    # videoSynchronisation.synchroniseVideo()
+    # Create class to synch the videos
+    videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
+    # ... and them synch them
+    videoSynchronisation.synchroniseVideo()
     
-    # print("Video synchronisation completed without errors")
+    print("Video synchronisation completed without errors")
     
-    # # After synchronisation, get the offset between the two videos
-    # # First get the default FPS
-    # defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
-    # # ... and then compute the shift between the videos
-    # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
-    
-    frameDifference = 33
+    # After synchronisation, get the offset between the two videos
+    # First get the default FPS
+    defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
+    # ... and then compute the shift between the videos
+    frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
     
     print("Frame difference: ", frameDifference)
     
@@ -86,7 +82,6 @@ def main():
         videoMoving.setVideoFrame(abs(frameDifference))
         
     print("Starting calculation of the light directions in the videos...")
-    
     
     # Variable used to store the time calculated after each read on the video, in order to provide synchronisation
     timeStaticVideo = 0.
@@ -121,58 +116,67 @@ def main():
             # Video moving is behind more than 1 frame, so skip it to recover the loss
             if timeMovingVideo > timeStaticVideo + (1. / videoMoving.getFPS()):
                 retMoving, movingFrame = videoMoving.getCurrentFrame()
-    
-        staticFrame = cv.GaussianBlur(staticFrame, (5, 5), 0)
-        movingFrame = cv.GaussianBlur(movingFrame, (5, 5), 0)
-    
-        # TODO: Apply undistortion
         
         # Convert frames to grayscale
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
         
+        # Get the homography between static camera i-th frame (src) and first static camera frame (dst)
+        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static")
+        
+        # Get the homography between static camera (src) and moving camera (dst) i-th frame
+        _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving")
+        
+        if len(homographyStaticToStatic) != 0 and len(homographyStaticToMoving) != 0:
+            # Add 1 to the source points
+            dstStaticToMoving_hom = np.hstack([np.squeeze(dstStaticToMoving), np.ones([dstStaticToMoving.shape[0], 1], dtype=dstStaticToMoving.dtype)])
+            
+            # Source points inside world reference system
+            dstWorldFrame = worldHomography @ homographyStaticToStatic @  np.linalg.inv(homographyStaticToMoving) @ dstStaticToMoving_hom.T 
+            
+            dstWorldFrame /= dstWorldFrame[2, :]
+            
+            dstWorldFrame = dstWorldFrame.T
+            
+            # Set last postion to 0
+            dstWorldFrame[:, 2] = 0
+            
+            lightVectorPnP = rti.getLigthWithSolvePnP(dstWorldFrame, np.squeeze(dstStaticToMoving), K)
+            
+            Hworld2moving = homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography)
+            
+            R, T = rti.getExtrinsicsParameters(Hworld2moving, K)
+            
+            lightVectorEstimated = rti.getLightVector(R, T)
+            
+        else:
+            
+            lightVector = []
+        
         # Now get world frame using static camera and the homography
-        worldFrame = cv.warpPerspective(staticFrame, worldHomography, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
+        worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
+        cirlePlotPnP = rti.showCircleLightDirection(lightVectorPnP)
         
-        # # Now, it's possible to get homography between the world and the moving camera
-        # # Important: The order of parameters is important. In our case the mapping of the features to calculate the homography
-        # # are from the world frame to the moving frame.
-        # # Changing the order will change the computation of the ligth direction
-        # homographyWorldMoving = rti.getHomographyWithFeatureMatching(worldFrame, movingFrame, videoMoving)
+        cirlePlotEstimated = rti.showCircleLightDirection(lightVectorEstimated)
         
-        # if (len(homographyWorldMoving) != 0):
-            
-        #     warpedMoving = cv.warpPerspective(movingFrame, homographyWorldMoving, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags=cv.WARP_INVERSE_MAP)
-            
-        #     cv.imshow("Warped moving", warpedMoving)
-            
-        #     # If the homography is defined, it's possible to retrieve the extrinsic parameters R and T
-        #     R, T = rti.getExtrinsicsParameters(homographyWorldMoving, defaultK)
-        # else:
-        #     R = T = []
-            
-        # if len(R) != 0 and len(T) != 0:
-        #     # Get the light vector
-        #     lightVector = rti.getLightVector(R, T)
-        #     # ... and store it inside the light directions
-        #     rti.storeLightVector(worldFrame, staticFrame, lightVector)
-        # else:
-        #     lightVector = []
+        # if len(lightVector) != 0:
+        #     rti.storeLightVector(worldFrame, staticFrame, lightVector)      
+       
+        warpedMoving = cv.warpPerspective(movingFrame,  homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
+        
+        cv.imshow('Light plot PnP', cirlePlotPnP)
+        cv.imshow('Light plot Estimated', cirlePlotEstimated)
+        cv.imshow('World frame', worldFrame)
+        cv.imshow('World frame moving', warpedMoving)
+        cv.imshow('Static Frame', cv.resize(staticFrame, (480, 960)))
+        cv.imshow('Moving Frame', cv.resize(movingFrame, (480, 960)))
         
         iteration += 1
-        
-        lightVector = rti.getLightUsingPnP(worldFrame, movingFrame, videoMoving)
-        if len(lightVector) != 0:
-            rti.storeLightVector(worldFrame, staticFrame, lightVector)
-        
-        cirlePlot = rti.showCircleLightDirection(lightVector)
-        
-        cv.imshow('Light plot', cirlePlot)
-        cv.imshow('World frame', worldFrame)
         
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
+        
 
     cv.destroyAllWindows()
     
@@ -188,7 +192,7 @@ def main():
     
     # print("RBF Interpolation done")
     
-    rti.applyRelighting()
+    # rti.applyRelighting()
     
     # release videos and destroy windows
     videoStatic.releaseVideo()

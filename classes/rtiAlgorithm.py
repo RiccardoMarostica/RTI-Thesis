@@ -19,7 +19,7 @@ class RTI:
         """
         
         # Create methods to perform feature matching
-        self.sift = cv.SIFT_create()
+        self.sift = cv.SIFT_create(nfeatures = 3000)
         self.flann = cv.FlannBasedMatcher_create()
         self.bruteforce = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
         
@@ -164,39 +164,65 @@ class RTI:
 
         return R, T
 
-    def getLightUsingPnP(self, frame1, frame2, video2):
+    # def getLightUsingPnP(self, frame1, frame2, video2):
          
-        try:
-            # Compute features using SIFT in both frames. Return keypoints and related descriptors
-            keypoints1, descriptors1 = self.sift.detectAndCompute(frame1, None)
-            keypoints2, descriptors2 = self.sift.detectAndCompute(frame2, None)
+    #     try:
+    #         # Compute features using SIFT in both frames. Return keypoints and related descriptors
+    #         keypoints1, descriptors1 = self.sift.detectAndCompute(frame1, None)
+    #         keypoints2, descriptors2 = self.sift.detectAndCompute(frame2, None)
 
-            # Feature matching using KNN (K-Nearest-Neighborhood) technique of FLANN
-            matches = self.flann.knnMatch(descriptors1, descriptors2, k=2)
-            # matches = self.bruteforce.match(descriptors1, descriptors2)
+    #         # Feature matching using KNN (K-Nearest-Neighborhood) technique of FLANN
+    #         matches = self.flann.knnMatch(descriptors1, descriptors2, k=2)
+    #         # matches = self.bruteforce.match(descriptors1, descriptors2)
         
-            src = []
-            dst = []
+    #         src = []
+    #         dst = []
             
-            goodMatches = []
-            for m1, m2 in matches:
-                if m1.distance < 0.7 * m2.distance:
-                    src.append(keypoints1[m1.queryIdx].pt)
-                    dst.append(keypoints2[m1.trainIdx].pt)
-                    goodMatches.append(m1)
+    #         goodMatches = []
+    #         for m1, m2 in matches:
+    #             if m1.distance < 0.7 * m2.distance:
+    #                 src.append(keypoints1[m1.queryIdx].pt)
+    #                 dst.append(keypoints2[m1.trainIdx].pt)
+    #                 goodMatches.append(m1)
 
+    #         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
+    #         if len(goodMatches) > MIN_MATCH_COUNT:
+    #             # Get source and destination points found inside the good matches to build the homography between the two frames
+    #             src = np.float32(src).reshape(-1, 1, 2)
+    #             dst = np.float32(dst).reshape(-1, 1, 2)
+                
+    #             src3d = np.hstack([np.squeeze(src), np.zeros([src.shape[0], 1], dtype=src.dtype)])
+    #             dst3d = np.squeeze(dst)
+                
+    #             K = self.getDefaultK(video2)
+                
+    #             ret, rvec, tvec, _ = cv.solvePnPRansac(src3d, dst3d, K, None, flags=cv.SOLVEPNP_IPPE)
+                
+    #             if not ret:
+    #                 # if solvePnP fails, then return an empty array, corresponding to no light
+    #                 return []
+                
+    #             R, _ = cv.Rodrigues(rvec)
+                
+    #             lightVector = -R.T @ tvec
+    #             lightVector = lightVector / np.linalg.norm(lightVector)              
+                
+    #             return [] if np.isnan(lightVector).any() else lightVector
+                
+    #         else:
+    #             return []
+            
+    #     except:
+    #         # If an error occurs in the calculation of the matches, just return an empty array corresponding to empty homography
+    #         return []
+    
+    
+    def getLigthWithSolvePnP(self, src, dst, K):
+         
             # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
-            if len(goodMatches) > MIN_MATCH_COUNT:
-                # Get source and destination points found inside the good matches to build the homography between the two frames
-                src = np.float32(src).reshape(-1, 1, 2)
-                dst = np.float32(dst).reshape(-1, 1, 2)
-                
-                src3d = np.hstack([np.squeeze(src), np.zeros([src.shape[0], 1], dtype=src.dtype)])
-                dst3d = np.squeeze(dst)
-                
-                K = self.getDefaultK(video2)
-                
-                ret, rvec, tvec, _ = cv.solvePnPRansac(src3d, dst3d, K, None, flags=cv.SOLVEPNP_IPPE)
+            if len(src) > MIN_MATCH_COUNT:
+            
+                ret, rvec, tvec = cv.solvePnP(src, dst, K, None, flags=cv.SOLVEPNP_IPPE)
                 
                 if not ret:
                     # if solvePnP fails, then return an empty array, corresponding to no light
@@ -210,14 +236,11 @@ class RTI:
                 return [] if np.isnan(lightVector).any() else lightVector
                 
             else:
+                print("Not enough points")
                 return []
-            
-        except:
-            # If an error occurs in the calculation of the matches, just return an empty array corresponding to empty homography
-            return []
-        
+    
 
-    def getHomographyWithFeatureMatching(self, frame1, frame2, video2):
+    def getHomographyWithFeatureMatching(self, frame1, frame2, name):
         """The function retrieves an homography between two views, trough feature matching.\n
         For both views (two distinct frames), features are detected using SIFT. The detected features (with keypoints and descriptors) are matched in the two views using FLANN matcher, in which for each descriptor K best matches are found.\n
         From the matches, then, the keypoints of both views (source view as frame1 and destination view as frame2) are extracted and from them the homography between the two views is calculated.
@@ -248,9 +271,9 @@ class RTI:
         goodMatches = []
         for m1, m2 in matches:
             if m1.distance < 0.7 * m2.distance:
+                goodMatches.append(m1)
                 src.append(keypoints1[m1.queryIdx].pt)
                 dst.append(keypoints2[m1.trainIdx].pt)
-                goodMatches.append(m1)
 
         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
         if len(src) > MIN_MATCH_COUNT:
@@ -259,22 +282,21 @@ class RTI:
             dst = np.float32(dst).reshape(-1, 1, 2)
             
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
-            homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)   
+            homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
                         
             # # Draw matches
             # img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
             # cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
-            # cv.imshow('Good Matches', img_matches)
+            # cv.imshow(name, img_matches)
             
-            # Press Q on the keyboard to exit.
-            if (cv.waitKey(25) & 0xFF == ord('q')):
-                return homography
-            
+            # # Press Q on the keyboard to exit.
+            # if (cv.waitKey(25) & 0xFF == ord('q')):
+            #     return homography
                    
-            return homography
+            return src, dst, homography
         else:
-            return []
+            return None, None, []
         
     def getLightVector(self, R, T):
         """The function returns an estimated light vector, using the Camera Pose.
