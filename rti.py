@@ -134,51 +134,45 @@ def main():
         # Now get world frame using static camera and the homography
         worldFrame = cv.warpPerspective(staticFrame, worldHomography, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
         
-        # Now, it's possible to get homography between the world and the moving camera
-        # Important: The order of parameters is important. In our case the mapping of the features to calculate the homography
-        # are from the world frame to the moving frame.
-        # Changing the order will change the computation of the ligth direction
-        homographyWorldMoving = rti.getHomographyWithFeatureMatching(worldFrame, movingFrame)
+        # # Now, it's possible to get homography between the world and the moving camera
+        # # Important: The order of parameters is important. In our case the mapping of the features to calculate the homography
+        # # are from the world frame to the moving frame.
+        # # Changing the order will change the computation of the ligth direction
+        # homographyWorldMoving = rti.getHomographyWithFeatureMatching(worldFrame, movingFrame, videoMoving)
         
-        if (len(homographyWorldMoving) != 0):
-            # If the homography is defined, it's possible to retrieve the extrinsic parameters R and T
-            R, T = rti.getExtrinsicsParameters(homographyWorldMoving, defaultK)
-        else:
-            R = T = []
+        # if (len(homographyWorldMoving) != 0):
             
-        if len(R) != 0 and len(T) != 0:
-            # Get the light vector
-            lightVector = rti.getLightVector(R, T)
-            # ... and store it inside the light directions
-            rti.storeLightVector(worldFrame, staticFrame, lightVector)
-        else:
-            lightVector = []
+        #     warpedMoving = cv.warpPerspective(movingFrame, homographyWorldMoving, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags=cv.WARP_INVERSE_MAP)
+            
+        #     cv.imshow("Warped moving", warpedMoving)
+            
+        #     # If the homography is defined, it's possible to retrieve the extrinsic parameters R and T
+        #     R, T = rti.getExtrinsicsParameters(homographyWorldMoving, defaultK)
+        # else:
+        #     R = T = []
+            
+        # if len(R) != 0 and len(T) != 0:
+        #     # Get the light vector
+        #     lightVector = rti.getLightVector(R, T)
+        #     # ... and store it inside the light directions
+        #     rti.storeLightVector(worldFrame, staticFrame, lightVector)
+        # else:
+        #     lightVector = []
         
         iteration += 1
         
-        cirlePlot = rti.showCircleLightDirection(lightVector)
-         
-        # if len(lightVector) != 0:
-        #     x = int(((lightVector[0][0] + 1) * videoStatic.getWidth()) / 2)
-        #     y = int(((lightVector[1][0] + 1) * videoStatic.getHeight()) / 2)
-        #     print(f"coordinates: ({x}, {y})")      
-        #     cv.circle(staticFrame, (int(x), int(y)), 10, (255, 0, 0), 5)
-        #     cv.line(staticFrame, (int(videoStatic.getWidth() / 2), int(videoStatic.getHeight() / 2)), (int(x), int(y)), (255, 0, 0), 5)
-        #     cv.putText(staticFrame, f"P=({x},{y})", (50, 50), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv.LINE_AA)
+        lightVector = rti.getLightUsingPnP(worldFrame, movingFrame, videoMoving)
+        if len(lightVector) != 0:
+            rti.storeLightVector(worldFrame, staticFrame, lightVector)
         
+        cirlePlot = rti.showCircleLightDirection(lightVector)
         
         cv.imshow('Light plot', cirlePlot)
         cv.imshow('World frame', worldFrame)
-        cv.imshow('Static camera', cv.resize(staticFrame,(480, 960)))
-        cv.imshow('Moving camera', cv.resize(movingFrame,(480, 960)))
         
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
-        
-        # # Press S to continue to the next view
-        # if cv.waitKey(0) & 0xFF == ord('s'):
-        #     continue
 
     cv.destroyAllWindows()
     

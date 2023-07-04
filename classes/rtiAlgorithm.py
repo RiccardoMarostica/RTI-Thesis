@@ -164,7 +164,60 @@ class RTI:
 
         return R, T
 
-    def getHomographyWithFeatureMatching(self, frame1, frame2):
+    def getLightUsingPnP(self, frame1, frame2, video2):
+         
+        try:
+            # Compute features using SIFT in both frames. Return keypoints and related descriptors
+            keypoints1, descriptors1 = self.sift.detectAndCompute(frame1, None)
+            keypoints2, descriptors2 = self.sift.detectAndCompute(frame2, None)
+
+            # Feature matching using KNN (K-Nearest-Neighborhood) technique of FLANN
+            matches = self.flann.knnMatch(descriptors1, descriptors2, k=2)
+            # matches = self.bruteforce.match(descriptors1, descriptors2)
+        
+            src = []
+            dst = []
+            
+            goodMatches = []
+            for m1, m2 in matches:
+                if m1.distance < 0.7 * m2.distance:
+                    src.append(keypoints1[m1.queryIdx].pt)
+                    dst.append(keypoints2[m1.trainIdx].pt)
+                    goodMatches.append(m1)
+
+            # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
+            if len(goodMatches) > MIN_MATCH_COUNT:
+                # Get source and destination points found inside the good matches to build the homography between the two frames
+                src = np.float32(src).reshape(-1, 1, 2)
+                dst = np.float32(dst).reshape(-1, 1, 2)
+                
+                src3d = np.hstack([np.squeeze(src), np.zeros([src.shape[0], 1], dtype=src.dtype)])
+                dst3d = np.squeeze(dst)
+                
+                K = self.getDefaultK(video2)
+                
+                ret, rvec, tvec, _ = cv.solvePnPRansac(src3d, dst3d, K, None, flags=cv.SOLVEPNP_IPPE)
+                
+                if not ret:
+                    # if solvePnP fails, then return an empty array, corresponding to no light
+                    return []
+                
+                R, _ = cv.Rodrigues(rvec)
+                
+                lightVector = -R.T @ tvec
+                lightVector = lightVector / np.linalg.norm(lightVector)              
+                
+                return [] if np.isnan(lightVector).any() else lightVector
+                
+            else:
+                return []
+            
+        except:
+            # If an error occurs in the calculation of the matches, just return an empty array corresponding to empty homography
+            return []
+        
+
+    def getHomographyWithFeatureMatching(self, frame1, frame2, video2):
         """The function retrieves an homography between two views, trough feature matching.\n
         For both views (two distinct frames), features are detected using SIFT. The detected features (with keypoints and descriptors) are matched in the two views using FLANN matcher, in which for each descriptor K best matches are found.\n
         From the matches, then, the keypoints of both views (source view as frame1 and destination view as frame2) are extracted and from them the homography between the two views is calculated.
@@ -206,7 +259,7 @@ class RTI:
             dst = np.float32(dst).reshape(-1, 1, 2)
             
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
-            homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)     
+            homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)   
                         
             # # Draw matches
             # img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
@@ -274,17 +327,22 @@ class RTI:
 
         center_x = center_y = DEFAULT_SQUARE_SIZE // 2
         radius = DEFAULT_SQUARE_SIZE // 2    
+        
+        try:
+            # Draw the circle border
+            cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 2)
             
-        # Draw the circle border
-        cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 2)
-        
-        if len(light_direction) != 0:
-            x = int(((light_direction[0][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)
-            y = int(((light_direction[1][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)        
-            cv.circle(image, (int(x), int(y)), 10, (0, 255, 0), 2)
-            cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2)
-        
-        return image
+            if len(light_direction) != 0:
+                x = int(((light_direction[0][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)
+                y = int(((light_direction[1][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)        
+                cv.circle(image, (int(x), int(y)), 10, (0, 255, 0), 2)
+                cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2)
+            
+            return image
+        except:
+            print(light_direction)
+            
+            return []
 
     def applRBFInterpolation(self, xf: int, yf: int, nu: int, nv: int):
         """The function (Tensor function) computes RBF Interpolation, using all the images stored in the Analysis step, and the dimension of the space. \n
