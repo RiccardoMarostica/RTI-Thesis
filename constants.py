@@ -1,11 +1,8 @@
-STATIC_VIDEO_CALIBRATION_FILE_PATH = "./video/cam-static/calibration.mp4"
-MOVING_VIDEO_CALIBRATION_FILE_PATH = "./video/cam-moving/calibration.mp4"
+STATIC_VIDEO_CALIBRATION_FILE_PATH = "./video/round-table/static/calibration.mov"
+MOVING_VIDEO_CALIBRATION_FILE_PATH = "./video/round-table/moving/calibration.mov"
 
-STATIC_VIDEO_FILE_PATH = "./video/cam-static/coin1.mp4"
-MOVING_VIDEO_FILE_PATH = "./video/cam-moving/coin1.mp4"
-
-STATIC_VIDEO_PARAMS_PATH = "./parameters/static/"
-MOVING_VIDEO_PARAMS_PATH = "./parameters/moving/"
+STATIC_VIDEO_FILE_PATH = "./video/round-table/static/keys.mov"
+MOVING_VIDEO_FILE_PATH = "./video/round-table/moving/keys.mov"
 
 CALIBRATION_PATTERN_IMG_PATH = "./video/calibration_pattern.png"
 

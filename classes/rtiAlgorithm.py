@@ -6,9 +6,8 @@ from constants import *
 from classes.video import Video
 
 class LightDirection:
-    def __init__(self, frame, staticFrame, lightVector) -> None:
+    def __init__(self, frame, lightVector) -> None:
         self.frame = frame
-        self.staticFrame = staticFrame
         self.ligthVector = lightVector
         pass
 
@@ -19,7 +18,7 @@ class RTI:
         """
         
         # Create methods to perform feature matching
-        self.sift = cv.SIFT_create(nfeatures = 3000)
+        self.sift = cv.SIFT_create()
         self.flann = cv.FlannBasedMatcher_create()
         self.bruteforce = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
         
@@ -240,7 +239,7 @@ class RTI:
                 return []
     
 
-    def getHomographyWithFeatureMatching(self, frame1, frame2, name):
+    def getHomographyWithFeatureMatching(self, frame1, frame2, name, debug = False):
         """The function retrieves an homography between two views, trough feature matching.\n
         For both views (two distinct frames), features are detected using SIFT. The detected features (with keypoints and descriptors) are matched in the two views using FLANN matcher, in which for each descriptor K best matches are found.\n
         From the matches, then, the keypoints of both views (source view as frame1 and destination view as frame2) are extracted and from them the homography between the two views is calculated.
@@ -283,16 +282,17 @@ class RTI:
             
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
-                        
-            # # Draw matches
-            # img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
-            # cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
-            # cv.imshow(name, img_matches)
             
-            # # Press Q on the keyboard to exit.
-            # if (cv.waitKey(25) & 0xFF == ord('q')):
-            #     return homography
+            if debug:        
+                # Draw matches
+                img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
+                cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+
+                cv.imshow(name, img_matches)
+                
+                # Press Q on the keyboard to exit.
+                if (cv.waitKey(25) & 0xFF == ord('q')):
+                    return src, dst, homography
                    
             return src, dst, homography
         else:
@@ -317,14 +317,14 @@ class RTI:
         lightVector = l / norm_l
         return lightVector
         
-    def storeLightVector(self, frame, staticFrame, lightVector):
+    def storeLightVector(self, frame, lightVector):
         """The function stores the information about a light vector and the respective frame, which will be used later to perform religthing.
         
         Args:
             frame (Any): Frame related to a specific light vector
             lightVector (Any): Light vector computed from Camera Pose
         """
-        self.lightDirections.append(LightDirection(frame, staticFrame, lightVector))
+        self.lightDirections.append(LightDirection(frame, lightVector))
         
     def getLightDirections(self) -> list[LightDirection]:
         """The function returns the list of all the pairs (light vector, related frame) stored during the analysis process.
@@ -486,16 +486,7 @@ class RTI:
             x (int): x coordinate
             y (int): y coordinate
         """
-        if event == cv.EVENT_MOUSEMOVE:
-            
-            # # Get information from parameters
-            # center_x = params[0]
-            # center_y = params[1]
-            
-            # # Draw the point
-            # cv.circle(self.relightPlot, (int(x), int(y)), 10, (0, 255, 0), 2)
-            # cv.line(self.relightPlot, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2)
-            
+        if event == cv.EVENT_MOUSEMOVE:    
 
             # Get the array containing the information about relighting    
             # rbfInterpolation = self.getRBFInterpolation()
@@ -523,16 +514,9 @@ class RTI:
             # Get the nearest frame
             index = self.findNearestFrame(lights, [norm_X, norm_Y])
             
-            print("Nearest light index: ", str(index))
             print("Nearest light value: ", str(lightDirections[index].ligthVector))
             
             frame = lightDirections[index].frame
-            staticFrame = cv.resize(lightDirections[index].staticFrame, (480, 960))
             
             # ... and show it
             cv.imshow("Relighted image", frame)
-            cv.imshow("Static frame", staticFrame)
-            
-            
-# TODO:
-# 1. Visualizzare al movimento del mouse il cambiamento del frame + direzione del light vector -> FARE DEBUGGING

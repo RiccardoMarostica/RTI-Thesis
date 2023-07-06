@@ -43,7 +43,7 @@ class CameraCalibration:
         # This denotes the location of the points (corners)
         # For simplicity, consider that z = 0, meaning the chessboard was kept stationary at XY plane
         self.objectPoint = np.zeros((self.cornersX * self.cornersY, 3), np.float32)
-        self.objectPoint[:, :2] = np.mgrid[0:9, 0:6].T.reshape(-1, 2)
+        self.objectPoint[:, :2] = np.mgrid[0:self.cornersX, 0:self.cornersY].T.reshape(-1, 2)
 
         # These fields are the results of the camera calibration
         self.intrinsicParameters = []
@@ -67,6 +67,13 @@ class CameraCalibration:
             # Means there is a frame in the buffer
             if ret == True:
                 
+                if (self.video.getWidth() < self.video.getHeight()):
+                    # Portrait
+                    frame = cv.resize(frame, (1080, 1920))
+                else:
+                    # Landscape
+                    frame = cv.resize(frame, (1920, 1080))
+                
                 # Convert image from BRG to GRAY
                 grayFrame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
@@ -86,7 +93,7 @@ class CameraCalibration:
                     # Store the refined corners (2D points)
                     imagePoints.append(refinedCorners)
                     
-                    if (self.debug == True and ret == True):
+                    if (self.debug == True  and ret == True):
                         # If we are in debugging and there is a pattern, draw chessboard corners in the image
                         cv.drawChessboardCorners(frame, (self.cornersX, self.cornersY), refinedCorners, ret)
 
