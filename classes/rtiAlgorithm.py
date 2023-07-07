@@ -239,7 +239,7 @@ class RTI:
                 return []
     
 
-    def getHomographyWithFeatureMatching(self, frame1, frame2, name, debug = False):
+    def getHomographyWithFeatureMatching(self, frame1, frame2, name, debug = False, cutFrame1 = None, cutFrame2 = None):
         """The function retrieves an homography between two views, trough feature matching.\n
         For both views (two distinct frames), features are detected using SIFT. The detected features (with keypoints and descriptors) are matched in the two views using FLANN matcher, in which for each descriptor K best matches are found.\n
         From the matches, then, the keypoints of both views (source view as frame1 and destination view as frame2) are extracted and from them the homography between the two views is calculated.
@@ -270,12 +270,41 @@ class RTI:
         goodMatches = []
         for m1, m2 in matches:
             if m1.distance < 0.7 * m2.distance:
-                goodMatches.append(m1)
-                src.append(keypoints1[m1.queryIdx].pt)
-                dst.append(keypoints2[m1.trainIdx].pt)
+                
+                src_pt = keypoints1[m1.queryIdx].pt
+                dst_pt = keypoints2[m1.trainIdx].pt
+                
+                if cutFrame1 is not None and cutFrame2 is not None:
+                    
+                    # Get cut points for src
+                    srcCutX = cutFrame1[0]
+                    srcCutY = cutFrame1[1]
+                    
+                    # Get cut points for dst
+                    dstCutX = cutFrame2[0]
+                    dstCutY = cutFrame2[1]
+                    
+                    isInsideSrcCut = (srcCutX[0] <= src_pt[0] <= srcCutX[1]) and (srcCutY[0] <= src_pt[1] <= srcCutY[1])
+                    isInsideDstCut = (dstCutX[0] <= dst_pt[0] <= dstCutX[1]) and (dstCutY[0] <= dst_pt[1] <= dstCutY[1])
+                    
+                    cv.rectangle(frame1, (srcCutX[0], srcCutY[0]), (srcCutX[1], srcCutY[1]), (0, 255, 0), 2)
+                    cv.rectangle(frame2, (dstCutX[0], dstCutY[0]), (dstCutX[1], dstCutY[1]), (0, 255, 0), 2)
+                    
+                    if isInsideSrcCut == True and isInsideDstCut == True:
+                        src.append(src_pt)
+                        dst.append(dst_pt)
+                                
+                        goodMatches.append(m1)
+                                
+                else:            
+                    src.append(src_pt)
+                    dst.append(dst_pt)
+
+        len(src)
 
         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
-        if len(src) > MIN_MATCH_COUNT:
+        if len(src) >= MIN_MATCH_COUNT:
+            
             # Get source and destination points found inside the good matches to build the homography between the two frames
             src = np.float32(src).reshape(-1, 1, 2)
             dst = np.float32(dst).reshape(-1, 1, 2)

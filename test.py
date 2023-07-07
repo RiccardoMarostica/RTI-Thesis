@@ -17,12 +17,13 @@ videoMoving = Video(MOVING_VIDEO_FILE_PATH)
 print(f"Width: {videoMoving.getWidth()}")
 print(f"Height: {videoMoving.getHeight()}")
 
+
 while(videoMoving.isOpen()):
     ret, frame = videoMoving.getCurrentFrame()
     
     if ret == True:
         
-        frame = frame[300: 800, 600: 1100]
+        cv.rectangle(frame, (600, 250), (1100, 800), (0, 255, 0), 2)
         
         cv.imshow("Frame", frame)
         

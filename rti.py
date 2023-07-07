@@ -132,20 +132,16 @@ def main():
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
         
-        # staticFrame = staticFrame[1000:3200, 0: 2160]    # Crop for paperclip and unive
-        # movingFrame = movingFrame[100: 1000, 300: 1200]  # crop for paperclip and unive
-        
-        # staticFrame = staticFrame[1000:3200, 0: 2160]    # Crop for book
-        # movingFrame = movingFrame[50: 1080, 300: 1400]  # crop for book
-        
-        staticFrame = staticFrame[600: 1600, 1600:2600]    # Crop for keys
-        movingFrame = movingFrame[300: 800, 600: 1100]   # Crop for keys
-        
         # Get the homography between static camera i-th frame (src) and first static camera frame (dst)
         _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static")
         
         # Get the homography between static camera (src) and moving camera (dst) i-th frame
-        _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True)
+        
+        # For keys
+        _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((1500, 500), (2600, 1800)), cutFrame2 = ((600, 1100), (250, 800)))
+        
+        # For books
+        # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((300, 1900), (1200, 2950)), cutFrame2 = ((450, 1300), (100, 1000)))
         
         if len(homographyStaticToStatic) != 0 and len(homographyStaticToMoving) != 0:
             # Add 1 to the source points
@@ -168,25 +164,22 @@ def main():
             # R, T = rti.getExtrinsicsParameters(Hworld2moving, kMoving)
             
             # lightVectorEstimated = rti.getLightVector(R, T)
+                
+            # Now get world frame using static camera and the homography
+            worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
+            warpedMoving = cv.warpPerspective(movingFrame,  homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
             
+            cirlePlotPnP = rti.showCircleLightDirection(lightVectorPnP)
+        
+            cv.imshow('Light plot PnP', cirlePlotPnP)
+            cv.imshow('World frame', worldFrame)
+            cv.imshow('World frame moving', warpedMoving)
         else:
             
             lightVectorPnP = []
         
-        # Now get world frame using static camera and the homography
-        worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
-        cirlePlotPnP = rti.showCircleLightDirection(lightVectorPnP)
-        
         if len(lightVectorPnP) != 0:
             rti.storeLightVector(worldFrame, lightVectorPnP)      
-       
-        warpedMoving = cv.warpPerspective(movingFrame,  homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
-        
-        cv.imshow('Light plot PnP', cirlePlotPnP)
-        cv.imshow('World frame', worldFrame)
-        cv.imshow('World frame moving', warpedMoving)
-        # cv.imshow('Static Frame', staticFrame)
-        # cv.imshow('Moving Frame', movingFrame)
         
         iteration += 1
         
