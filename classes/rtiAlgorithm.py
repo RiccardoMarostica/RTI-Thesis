@@ -18,7 +18,7 @@ class RTI:
         """
         
         # Create methods to perform feature matching
-        self.sift = cv.SIFT_create()
+        self.sift = cv.SIFT_create(nfeatures=3000)
         self.flann = cv.FlannBasedMatcher_create()
         self.bruteforce = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
         
@@ -287,8 +287,9 @@ class RTI:
                     isInsideSrcCut = (srcCutX[0] <= src_pt[0] <= srcCutX[1]) and (srcCutY[0] <= src_pt[1] <= srcCutY[1])
                     isInsideDstCut = (dstCutX[0] <= dst_pt[0] <= dstCutX[1]) and (dstCutY[0] <= dst_pt[1] <= dstCutY[1])
                     
-                    cv.rectangle(frame1, (srcCutX[0], srcCutY[0]), (srcCutX[1], srcCutY[1]), (0, 255, 0), 2)
-                    cv.rectangle(frame2, (dstCutX[0], dstCutY[0]), (dstCutX[1], dstCutY[1]), (0, 255, 0), 2)
+                    if debug:
+                        cv.rectangle(frame1, (srcCutX[0], srcCutY[0]), (srcCutX[1], srcCutY[1]), (0, 255, 0), 2)
+                        cv.rectangle(frame2, (dstCutX[0], dstCutY[0]), (dstCutX[1], dstCutY[1]), (0, 255, 0), 2)
                     
                     if isInsideSrcCut == True and isInsideDstCut == True:
                         src.append(src_pt)
@@ -299,9 +300,7 @@ class RTI:
                 else:            
                     src.append(src_pt)
                     dst.append(dst_pt)
-
-        len(src)
-
+                    
         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
         if len(src) >= MIN_MATCH_COUNT:
             
@@ -325,7 +324,7 @@ class RTI:
                    
             return src, dst, homography
         else:
-            return None, None, []
+            return None, None, None
         
     def getLightVector(self, R, T):
         """The function returns an estimated light vector, using the Camera Pose.
@@ -492,11 +491,11 @@ class RTI:
         while(True):
             # Draw plot image
             self.relightPlot = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 3), dtype=np.uint8)
+            
             # Draw the circle border
             cv.circle(self.relightPlot, (center_x, center_y), radius, (255, 255, 255), 1)
             cv.line(self.relightPlot, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
             cv.line(self.relightPlot, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
-            
             
             cv.imshow("Relight plot", self.relightPlot)
             cv.setMouseCallback("Relight plot", self.calculateRelightingFrame, param=[center_x, center_y])
@@ -535,15 +534,11 @@ class RTI:
             norm_X = self.normaliseCoordinate(nearest_X, DEFAULT_SQUARE_SIZE)
             norm_Y = self.normaliseCoordinate(nearest_Y, DEFAULT_SQUARE_SIZE)
             
-            print("Normalised coordinates: ", str([norm_X, norm_Y]))
-            
             # Recover the lights from the array of light directions
             lights = np.array([tmp.ligthVector for tmp in lightDirections])
                         
             # Get the nearest frame
             index = self.findNearestFrame(lights, [norm_X, norm_Y])
-            
-            print("Nearest light value: ", str(lightDirections[index].ligthVector))
             
             frame = lightDirections[index].frame
             

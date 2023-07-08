@@ -23,7 +23,7 @@ while(videoMoving.isOpen()):
     
     if ret == True:
         
-        cv.rectangle(frame, (600, 250), (1100, 800), (0, 255, 0), 2)
+        cv.rectangle(frame, (400, 125), (1350, 1080), (0, 255, 0), 2)
         
         cv.imshow("Frame", frame)
         

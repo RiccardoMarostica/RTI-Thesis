@@ -24,7 +24,7 @@ def main():
     calibrationStatic = CameraCalibration(Video(STATIC_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
     calibrationMoving = CameraCalibration(Video(MOVING_VIDEO_CALIBRATION_FILE_PATH), (9, 6))
     
-    # retCalibStatic = calibrationStatic.calibrateCamera()
+    # Calibrate both cameras
     retCalibStatic = calibrationStatic.calibrateCamera()
     retCalibMoving = calibrationMoving.calibrateCamera()
     
@@ -44,7 +44,8 @@ def main():
     
     # Retrieve K for both cameras
     kStatic = calibrationStatic.getIntrinsicMatrix()
-    kMoving = calibrationMoving.getIntrinsicMatrix()
+    # kMoving = calibrationMoving.getIntrinsicMatrix()
+    kMoving = rti.getDefaultK(videoMoving)
 
     # Store the first frame of the Static Camera
     _, firstStaticFrame = videoStatic.getCurrentFrame()
@@ -132,18 +133,21 @@ def main():
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
         
-        # Get the homography between static camera i-th frame (src) and first static camera frame (dst)
-        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static")
-        
         # Get the homography between static camera (src) and moving camera (dst) i-th frame
         
         # For keys
-        _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((1500, 500), (2600, 1800)), cutFrame2 = ((600, 1100), (250, 800)))
+        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((1500, 2600), (500, 1600)), cutFrame2 = ((1500, 2600), (500, 1600)))
+        _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((1500, 2600), (500, 1600)), cutFrame2 = ((600, 1100), (250, 800)))
+        
+        # For paperclip
+        # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
+        # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))
         
         # For books
-        # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((300, 1900), (1200, 2950)), cutFrame2 = ((450, 1300), (100, 1000)))
+        # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((350, 1850), (1150, 2900)), cutFrame2 = ((300, 1900), (1200, 2950)))
+        # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((300, 1900), (1200, 2950)), cutFrame2 = ((400, 1350), (125, 1080)))
         
-        if len(homographyStaticToStatic) != 0 and len(homographyStaticToMoving) != 0:
+        if homographyStaticToStatic is not None and homographyStaticToMoving is not None:
             # Add 1 to the source points
             dstStaticToMoving_hom = np.hstack([np.squeeze(dstStaticToMoving), np.ones([dstStaticToMoving.shape[0], 1], dtype=dstStaticToMoving.dtype)])
             
@@ -159,23 +163,27 @@ def main():
             
             lightVectorPnP = rti.getLigthWithSolvePnP(dstWorldFrame, np.squeeze(dstStaticToMoving), kMoving)
             
-            # Hworld2moving = homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography)
+            Hworld2moving = homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography)
             
-            # R, T = rti.getExtrinsicsParameters(Hworld2moving, kMoving)
+            R, T = rti.getExtrinsicsParameters(Hworld2moving, kMoving)
             
-            # lightVectorEstimated = rti.getLightVector(R, T)
+            lightVectorEstimated = rti.getLightVector(R, T)
                 
-            # Now get world frame using static camera and the homography
+            # Now get world frame using static camera and homographies to move into the world reference system
             worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
-            warpedMoving = cv.warpPerspective(movingFrame,  homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
             
+            # ... and do the same for moving camera, in order to get a similarity between frames
+            warpedMoving = cv.warpPerspective(movingFrame,  homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
+            
+            # Show the light plot of the calculated light vector
             cirlePlotPnP = rti.showCircleLightDirection(lightVectorPnP)
+            cirlePlotEstimated = rti.showCircleLightDirection(lightVectorEstimated)
         
             cv.imshow('Light plot PnP', cirlePlotPnP)
+            cv.imshow('Light plot Estimated', cirlePlotEstimated)
             cv.imshow('World frame', worldFrame)
             cv.imshow('World frame moving', warpedMoving)
         else:
-            
             lightVectorPnP = []
         
         if len(lightVectorPnP) != 0:
