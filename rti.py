@@ -133,13 +133,18 @@ def main():
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
         
-        # Get the homography between static camera (src) and moving camera (dst) i-th frame
-        
+        firstCorner = tuple(rti.points[0])
+        secondCorner = tuple(rti.points[2])
         # For keys
-        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((1500, 2600), (500, 1600)), cutFrame2 = ((1500, 2600), (500, 1600)))
-        _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((1500, 2600), (500, 1600)), cutFrame2 = ((600, 1100), (250, 800)))
+        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", True, cutFrame1 = ((firstCorner[0], secondCorner[0]), (firstCorner[1], secondCorner[1])), cutFrame2 = ((firstCorner[0], secondCorner[0]), (firstCorner[1], secondCorner[1])))
         
-        # For paperclip
+        _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((1500, 2600), (500, 1600)), cutFrame2 = ((600, 1100), (250, 800)))
+        
+        # For unive
+        # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
+        # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))    
+    
+        # # For paperclip
         # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
         # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))
         
@@ -173,7 +178,7 @@ def main():
             worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
             
             # ... and do the same for moving camera, in order to get a similarity between frames
-            warpedMoving = cv.warpPerspective(movingFrame,  homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
+            warpedMoving = cv.warpPerspective(movingFrame,  homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
             
             # Show the light plot of the calculated light vector
             cirlePlotPnP = rti.showCircleLightDirection(lightVectorPnP)

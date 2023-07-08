@@ -18,7 +18,7 @@ class RTI:
         """
         
         # Create methods to perform feature matching
-        self.sift = cv.SIFT_create(nfeatures=3000)
+        self.sift = cv.SIFT_create(nfeatures=5000)
         self.flann = cv.FlannBasedMatcher_create()
         self.bruteforce = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
         
@@ -119,7 +119,8 @@ class RTI:
             # Press Q on the keyboard to exit.
             if (cv.waitKey(25) & 0xFF == ord('q')):
                 break
-
+        
+        self.points = points
 
         # Return the homography, even if not defined (None)
         return homograhy
