@@ -135,8 +135,9 @@ def main():
         
         firstCorner = tuple(rti.points[0])
         secondCorner = tuple(rti.points[2])
+
         # For keys
-        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", True, cutFrame1 = ((firstCorner[0], secondCorner[0]), (firstCorner[1], secondCorner[1])), cutFrame2 = ((firstCorner[0], secondCorner[0]), (firstCorner[1], secondCorner[1])))
+        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((firstCorner[0], secondCorner[0]), (firstCorner[1], secondCorner[1])), cutFrame2 = ((firstCorner[0], secondCorner[0]), (firstCorner[1], secondCorner[1])))
         
         _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((1500, 2600), (500, 1600)), cutFrame2 = ((600, 1100), (250, 800)))
         
@@ -153,6 +154,7 @@ def main():
         # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((300, 1900), (1200, 2950)), cutFrame2 = ((400, 1350), (125, 1080)))
         
         if homographyStaticToStatic is not None and homographyStaticToMoving is not None:
+            
             # Add 1 to the source points
             dstStaticToMoving_hom = np.hstack([np.squeeze(dstStaticToMoving), np.ones([dstStaticToMoving.shape[0], 1], dtype=dstStaticToMoving.dtype)])
             
