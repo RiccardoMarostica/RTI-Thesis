@@ -312,12 +312,23 @@ class RTI:
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
             
-            if debug:        
-                # Draw matches
-                img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
-                cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+            if debug:
+                    
+                lx, ly = np.meshgrid(np.linspace(400., 1350., 11), np.linspace(125., 1080., 11))
+                xy = np.rec.fromarrays([lx, ly]).tolist()
+                
+                for i in range(len(xy)):
+                    arr = xy[i]
+                    for j in range(len(arr)):
+                        tmp = arr[j]
+                        cv.circle(frame2, (int(tmp[0]), int(tmp[1])), 1, (0, 255, 0), -1)
+                
+                
+                # # Draw matches
+                # img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
+                # cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
-                cv.imshow(name, img_matches)
+                cv.imshow(name, frame2)
                 
                 # Press Q on the keyboard to exit.
                 if (cv.waitKey(25) & 0xFF == ord('q')):

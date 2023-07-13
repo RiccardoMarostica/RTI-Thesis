@@ -1,8 +1,8 @@
 STATIC_VIDEO_CALIBRATION_FILE_PATH = "./video/round-table/static/calibration.mov"
 MOVING_VIDEO_CALIBRATION_FILE_PATH = "./video/round-table/moving/calibration.mov"
 
-STATIC_VIDEO_FILE_PATH = "./video/round-table/static/keys.mov"
-MOVING_VIDEO_FILE_PATH = "./video/round-table/moving/keys.mov"
+STATIC_VIDEO_FILE_PATH = "./video/round-table/static/paperclip.mov"
+MOVING_VIDEO_FILE_PATH = "./video/round-table/moving/paperclip.mov"
 
 CALIBRATION_PATTERN_IMG_PATH = "./video/calibration_pattern.png"
 
