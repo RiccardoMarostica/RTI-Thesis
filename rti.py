@@ -3,7 +3,6 @@ import cv2 as cv
 import numpy as np
 import sys
 import os
-import datetime
 
 from PyQt6.QtWidgets import QApplication
 
@@ -12,7 +11,7 @@ from classes.videoSynchronisation import VideoSynchronisation
 from classes.cameraCalibration import CameraCalibration
 from classes.video import Video
 from classes.rtiAlgorithm import RTI
-from classes.gui import MainWindow
+from gui.classes.mainWindow import MainWindow
 
 from constants import *
 
@@ -246,5 +245,5 @@ def initaliseMainWindow():
     
     
 if __name__ == "__main__":
-    # initaliseMainWindow()
-    main()
+    initaliseMainWindow()
+    # main()
