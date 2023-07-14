@@ -74,9 +74,9 @@ def main():
     # # ... and then compute the shift between the videos
     # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
     
-    # frameDifference = -2    # Frame difference between unive (filename) video camera
+    frameDifference = -2    # Frame difference between unive (filename) video camera
     # frameDifference = -10   # Frame difference between keys (filename) video camera
-    frameDifference = -6    # Frame difference between paperclip (filename) video camera
+    # frameDifference = -6    # Frame difference between paperclip (filename) video camera
     # frameDifference = -9    # Frame difference between book (filename) video camera
     
     print("Frame difference: ", frameDifference)
@@ -133,30 +133,15 @@ def main():
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
         
-        # firstCorner = tuple(rti.points[0])
-        # secondCorner = tuple(rti.points[2])
-
-        # # For keys
-        # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((firstCorner[0], secondCorner[0]), (firstCorner[1], secondCorner[1])), cutFrame2 = ((firstCorner[0], secondCorner[0]), (firstCorner[1], secondCorner[1])))
-        # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((1500, 2600), (500, 1600)), cutFrame2 = ((600, 1100), (250, 800)))
-        
-        # For unive
-        # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
-        # _, dstStaticToMoving, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", True, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))    
-    
-        # # For paperclip
+        # UniVE video
         _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
-        _, _, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))
+        _, ptsMovingCam, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))    
         
-        # For books
-        # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((350, 1850), (1150, 2900)), cutFrame2 = ((300, 1900), (1200, 2950)))
-        # _, _, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((300, 1900), (1200, 2950)), cutFrame2 = ((400, 1350), (125, 1080)))
+        # # Paperclip video
+        # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
+        # _, ptsMovingCam, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))
         
         if homographyStaticToStatic is not None and homographyStaticToMoving is not None:
-            
-            # Create a grid in the world ref. system
-            xW, yW = np.meshgrid(np.linspace(0, DEFAULT_SQUARE_SIZE, 11), np.linspace(0, DEFAULT_SQUARE_SIZE, 11))
-            mgWorldCoord = np.vstack((xW.flatten(), yW.flatten())).T
             
             # Homography mapping points from world reference system to moving camera ref. system
             hWorld2Moving = homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography)
@@ -164,54 +149,61 @@ def main():
             # Homography mapping points from moving camera ref. system to world reference system 
             hMoving2World = worldHomography @ homographyStaticToStatic @  np.linalg.inv(homographyStaticToMoving)
             
-            # Create a grid in the moving camera ref. system
-            # lx, ly = np.meshgrid(np.linspace(450., 1150., 11), np.linspace(200., 900., 11))                
-            # dstStaticToMoving = np.vstack((lx.flatten(), ly.flatten())).T
+            # Option 1: Use a meshgrid to shift points from one ref. system to world ref. system
+            # # Create a grid in the moving camera ref. system
+            # lx, ly = np.meshgrid(np.linspace(450., 1150., 11), np.linspace(200., 900., 11))   
+            # # And plot the points             
+            # points2d = np.vstack((lx.flatten(), ly.flatten())).T
             
+            # Option 2: Use the features detected in the cam. ref. system and shift points to world ref. system
+            points2d = ptsMovingCam
+        
             # Add 1 to the source points
-            dstCoords = np.hstack([np.squeeze(mgWorldCoord), np.ones([mgWorldCoord.shape[0], 1], dtype=mgWorldCoord.dtype)])
+            points3d = np.hstack([np.squeeze(points2d), np.ones([points2d.shape[0], 1], dtype=points2d.dtype)])
             
             # Source points inside world reference system
-            dstCoords = hWorld2Moving @ dstCoords.T 
+            points3d = hMoving2World @ points3d.T 
             
-            dstCoords /= dstCoords[2, :]
+            points3d /= points3d[2, :]
             
-            dstCoords = dstCoords.T
+            points3d = points3d.T
             
             # Set last postion to 0
-            dstCoords[:, 2] = 0
+            points3d[:, 2] = 0
             
-            # lightVectorPnP = rti.getLigthWithSolvePnP(mgWorldCoord, np.squeeze(dstCoords), kMoving)
-                
             # Now get world frame using static camera and homographies to move into the world reference system
             worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
             
-            for i in range(len(mgWorldCoord)):
-                arr = mgWorldCoord[i]
-                cv.circle(worldFrame, (int(arr[0]), int(arr[1])), 3, (0, 255, 0), 1)
-                
-            for i in range(len(dstCoords)):
-                arr = dstCoords[i]
-                cv.circle(movingFrame, (int(arr[0]), int(arr[1])), 3, (0, 255, 0), 1)
-            
             # ... and do the same for moving camera, in order to get a similarity between frames
-            warpedMoving = cv.warpPerspective(movingFrame,  homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
+            warpedMoving = cv.warpPerspective(movingFrame,  hWorld2Moving, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
             
-            # Show the light plot of the calculated light vector
-            # cirlePlotPnP = rti.showCircleLightDirection(lightVectorPnP)
-            # cirlePlotEstimated = rti.showCircleLightDirection(lightVectorEstimated)
+            # Now, let's try to cross-correlate the two warped images.
+            # If the correlation is high, then the images are similar, so we can compute the light vector
+            # Otherwise, skip the frame
+            imgCorr = cv.matchTemplate(worldFrame, warpedMoving, cv.TM_CCOEFF_NORMED)
+                
+            # Set as lower threshold 0.6 to have high confidentiality
+            if imgCorr[0][0] >= 0.5:
+                # Calculate the light vector using PnP
+                lightVector = rti.getLigthWithSolvePnP(points3d, np.squeeze(points2d), kMoving)
+            else:
+                lightVector = None
         
-            # cv.imshow('Light plot PnP', cirlePlotPnP)
-            # cv.imshow('Light plot Estimated', cirlePlotEstimated)
+            # Show the light plot of the calculated light vector
+            cirlePlotPnP = rti.showCircleLightDirection(lightVector) 
+        
+            # Plot images
+            cv.imshow('Light plot PnP', cirlePlotPnP)
             cv.imshow('World frame', worldFrame)
             cv.imshow('World frame moving', warpedMoving)
-            cv.imshow('Moving camera frame', movingFrame)
             
         else:
-            lightVectorPnP = []
+            # Otherwise, if one of the two homographies is not defined, then the light vector is None
+            lightVector = None
         
-        # if len(lightVectorPnP) != 0:
-        #     rti.storeLightVector(worldFrame, lightVectorPnP)      
+        if lightVector is not None:
+            # Just store if the vector is defined
+            rti.storeLightVector(worldFrame, lightVector)      
         
         iteration += 1
         
@@ -222,9 +214,9 @@ def main():
 
     cv.destroyAllWindows()
     
-    # lightDirections = rti.getLightDirections()
+    lightDirections = rti.getLightDirections()
 
-    # print("Frames aquired: ", len(lightDirections))
+    print("Frames aquired: ", len(lightDirections))
     
     # print("Calculation of the light directions completed without errors")
     

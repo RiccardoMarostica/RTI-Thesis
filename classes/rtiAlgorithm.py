@@ -124,98 +124,6 @@ class RTI:
 
         # Return the homography, even if not defined (None)
         return homograhy
-        # return [] if homograhy is None else homograhy
-
-    '''
-    H -> Homography
-    K -> Intrinsic Parameters of the camera
-    The function computes the extrinsic parameters using the homography and intrinsic parameters array.
-    At the end, it returns the derived rotation and translation vectors
-    '''
-    def getExtrinsicsParameters(self, H, K) -> tuple:
-        """The function estimates the Camera Pose of the Camera. From an Homography H and the Instrinsic Parameters K, computes the Rotation Matrix R and the Translation Vector T, the two elements used to get the Camera Pose.
-
-        Args:
-            H (Any): Homography between two views
-            K (Any): Instrinsic Parameters Matrix of a Camera
-
-        Returns:
-            tuple: Returns R (Rotation Matrix) and T (Translation Vector)
-        """
-        
-        H = H.T                                             # Transpose of H
-        
-        K_inverse = np.linalg.inv(K)                        # Inverse of K
-        
-        h1 = H[0]                                           # First column
-        h2 = H[1]                                           # Second column
-        h3 = H[2]                                           # Third column
-        
-        alpha = 1 / np.linalg.norm(np.dot(K_inverse, h1))   # Scale factor
-        
-        r1 = alpha * np.dot(K_inverse, h1)                  #  Rotation matrix first column
-        r2 = alpha * np.dot(K_inverse, h2)                  #  Rotation matrix second column
-        r3 = np.cross(r1, r2)                               #  Rotation matrix third column
-        
-        
-        T = alpha * (K_inverse @ h3.reshape(3, 1))          # Get the translation vector
-        R = np.array([[r1], [r2], [r3]])                    #  Get the rotation matrix
-        R = np.reshape(R, (3, 3))
-
-        return R, T
-
-    # def getLightUsingPnP(self, frame1, frame2, video2):
-         
-    #     try:
-    #         # Compute features using SIFT in both frames. Return keypoints and related descriptors
-    #         keypoints1, descriptors1 = self.sift.detectAndCompute(frame1, None)
-    #         keypoints2, descriptors2 = self.sift.detectAndCompute(frame2, None)
-
-    #         # Feature matching using KNN (K-Nearest-Neighborhood) technique of FLANN
-    #         matches = self.flann.knnMatch(descriptors1, descriptors2, k=2)
-    #         # matches = self.bruteforce.match(descriptors1, descriptors2)
-        
-    #         src = []
-    #         dst = []
-            
-    #         goodMatches = []
-    #         for m1, m2 in matches:
-    #             if m1.distance < 0.7 * m2.distance:
-    #                 src.append(keypoints1[m1.queryIdx].pt)
-    #                 dst.append(keypoints2[m1.trainIdx].pt)
-    #                 goodMatches.append(m1)
-
-    #         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
-    #         if len(goodMatches) > MIN_MATCH_COUNT:
-    #             # Get source and destination points found inside the good matches to build the homography between the two frames
-    #             src = np.float32(src).reshape(-1, 1, 2)
-    #             dst = np.float32(dst).reshape(-1, 1, 2)
-                
-    #             src3d = np.hstack([np.squeeze(src), np.zeros([src.shape[0], 1], dtype=src.dtype)])
-    #             dst3d = np.squeeze(dst)
-                
-    #             K = self.getDefaultK(video2)
-                
-    #             ret, rvec, tvec, _ = cv.solvePnPRansac(src3d, dst3d, K, None, flags=cv.SOLVEPNP_IPPE)
-                
-    #             if not ret:
-    #                 # if solvePnP fails, then return an empty array, corresponding to no light
-    #                 return []
-                
-    #             R, _ = cv.Rodrigues(rvec)
-                
-    #             lightVector = -R.T @ tvec
-    #             lightVector = lightVector / np.linalg.norm(lightVector)              
-                
-    #             return [] if np.isnan(lightVector).any() else lightVector
-                
-    #         else:
-    #             return []
-            
-    #     except:
-    #         # If an error occurs in the calculation of the matches, just return an empty array corresponding to empty homography
-    #         return []
-    
     
     def getLigthWithSolvePnP(self, src, dst, K):
          
@@ -226,18 +134,18 @@ class RTI:
                 
                 if not ret:
                     # if solvePnP fails, then return an empty array, corresponding to no light
-                    return []
+                    return None
                 
                 R, _ = cv.Rodrigues(rvec)
                 
                 lightVector = -R.T @ tvec
                 lightVector = lightVector / np.linalg.norm(lightVector)              
                 
-                return [] if np.isnan(lightVector).any() else lightVector
+                return None if np.isnan(lightVector).any() else lightVector
                 
             else:
                 print("Not enough points")
-                return []
+                return None
     
 
     def getHomographyWithFeatureMatching(self, frame1, frame2, name, debug = False, cutFrame1 = None, cutFrame2 = None):
@@ -288,10 +196,6 @@ class RTI:
                     isInsideSrcCut = (srcCutX[0] <= src_pt[0] <= srcCutX[1]) and (srcCutY[0] <= src_pt[1] <= srcCutY[1])
                     isInsideDstCut = (dstCutX[0] <= dst_pt[0] <= dstCutX[1]) and (dstCutY[0] <= dst_pt[1] <= dstCutY[1])
                     
-                    if debug:
-                        cv.rectangle(frame1, (srcCutX[0], srcCutY[0]), (srcCutX[1], srcCutY[1]), (0, 255, 0), 2)
-                        cv.rectangle(frame2, (dstCutX[0], dstCutY[0]), (dstCutX[1], dstCutY[1]), (0, 255, 0), 2)
-                    
                     if isInsideSrcCut == True and isInsideDstCut == True:
                         src.append(src_pt)
                         dst.append(dst_pt)
@@ -313,20 +217,10 @@ class RTI:
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
             
             if debug:
-                    
-                lx, ly = np.meshgrid(np.linspace(400., 1350., 11), np.linspace(125., 1080., 11))
-                xy = np.rec.fromarrays([lx, ly]).tolist()
                 
-                for i in range(len(xy)):
-                    arr = xy[i]
-                    for j in range(len(arr)):
-                        tmp = arr[j]
-                        cv.circle(frame2, (int(tmp[0]), int(tmp[1])), 1, (0, 255, 0), -1)
-                
-                
-                # # Draw matches
-                # img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
-                # cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+                # Draw matches
+                img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
+                cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
                 cv.imshow(name, frame2)
                 
@@ -390,21 +284,16 @@ class RTI:
         center_x = center_y = DEFAULT_SQUARE_SIZE // 2
         radius = DEFAULT_SQUARE_SIZE // 2    
         
-        try:
-            # Draw the circle border
-            cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 2)
-            
-            if len(light_direction) != 0:
-                x = int(((light_direction[0][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)
-                y = int(((light_direction[1][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)        
-                cv.circle(image, (int(x), int(y)), 10, (0, 255, 0), 2)
-                cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2)
-            
-            return image
-        except:
-            print(light_direction)
-            
-            return []
+        # Draw the circle border
+        cv.circle(image, (center_x, center_y), radius, (255, 255, 255), 2)
+        
+        if light_direction is not None:
+            x = int(((light_direction[0][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)
+            y = int(((light_direction[1][0] + 1) * DEFAULT_SQUARE_SIZE) / 2)   
+            cv.circle(image, (int(x), int(y)), 10, (0, 255, 0), 2)
+            cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2) 
+        return image
+        
 
     def applRBFInterpolation(self, xf: int, yf: int, nu: int, nv: int):
         """The function (Tensor function) computes RBF Interpolation, using all the images stored in the Analysis step, and the dimension of the space. \n
