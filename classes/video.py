@@ -11,6 +11,11 @@ class Video:
     """
     
     def __init__(self, videoPath):
+        # Check validity of the video path
+        if videoPath is None:
+            print("Video file is not defined.")
+            exit(-1)
+        
         # Given a video path, just create a new video instance using OpenCV
         self.video = cv.VideoCapture(videoPath)
 

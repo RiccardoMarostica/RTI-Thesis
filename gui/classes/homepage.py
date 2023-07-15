@@ -18,7 +18,6 @@ class Homepage(QWidget):
         self.hide()
                 
     def setStartBtn(self, calibrationPage: QWidget):
-        print("Calling")
         # Find the button responsible to start the calibration
         self.start : QPushButton = self.findChild(QPushButton, 'startBtn')
         

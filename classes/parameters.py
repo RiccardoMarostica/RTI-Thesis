@@ -1,36 +1,50 @@
-class Parameters:
-    
-    # Fields - Parameters 
-    # Calibration video paths
-    STATIC_VIDEO_CALIBRATION_FILE_PATH = ""
-    MOVING_VIDEO_CALIBRATION_FILE_PATH = ""
-    # Video Analysis paths
-    STATIC_VIDEO_FILE_PATH = ""
-    MOVING_VIDEO_FILE_PATH = ""
-    
+from classes.cameraCalibration import CameraCalibration
+
+
+class Singleton:
+    """Alex Martelli implementation of Singleton (Borg)
+    http://python-3-patterns-idioms-test.readthedocs.io/en/latest/Singleton.html"""
+    _shared_state = {}
+
+    def __init__(self):
+        self.__dict__ = self._shared_state
+
+
+class Parameters (Singleton):
+
+    # CALIBRATION VARS
+    mvCamCalibPath = None
+    stCamCalibPath = None
+    stCamCalibration = None
+    mvCamCalibration = None
+
     def __init__(self) -> None:
+        Singleton.__init__(self)
+
         pass
-    
-    def getStaticCameraAnalysisPath(self) -> str:
-        return self.STATIC_VIDEO_FILE_PATH
-    
-    def getMovingCameraAnalysisPath(self) -> str:
-        return self.MOVING_VIDEO_FILE_PATH
-    
-    def getStaticCameraCalibrationPath(self) -> str:
-        return self.STATIC_VIDEO_CALIBRATION_FILE_PATH
-    
-    def getMovingCameraCalibrationPath(self) -> str:
-        return self.MOVING_VIDEO_CALIBRATION_FILE_PATH
-    
-    def setStaticCameraAnalysisPath(self, path: str) -> None:
-        self.STATIC_VIDEO_FILE_PATH = path
-    
-    def setMovingCameraAnalysisPath(self, path: str) -> None:
-        self.MOVING_VIDEO_FILE_PATH = path
-    
-    def setStaticCameraCalibrationPath(self, path: str) -> None:
-        self.STATIC_VIDEO_CALIBRATION_FILE_PATH = path
-    
-    def setMovingCameraCalibrationPath(self, path: str) -> None:
-        self.MOVING_VIDEO_CALIBRATION_FILE_PATH = path
+
+    def getStCamCalibPath(self):
+        return self.stCamCalibPath
+
+    def getMvCamCalibPath(self):
+        return self.mvCamCalibPath
+
+    def setCamCalibPath(self, camId, path):
+        if camId == "stCamBtn":
+            # Store the path inside a class variable, which will be used to the calibration method
+            self.stCamCalibPath = path
+
+        if camId == 'mvCamBtn':
+            # Store the path inside a class variable, which will be used to the calibration method
+            self.mvCamCalibPath = path
+
+    def getStCamCalibData(self):
+        return self.stCamCalibration
+
+    def getStCamCalibData(self):
+        return self.stCamCalibration
+
+    def setCamsCalibData(self, camSt: CameraCalibration, camMv: CameraCalibration):
+        # Store both calibration class inside the class
+        self.stCamCalibration = camSt
+        self.mvCamCalibration = camMv

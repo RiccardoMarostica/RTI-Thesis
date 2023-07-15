@@ -27,7 +27,8 @@ class MainWindow (QMainWindow):
         self.calibration = self.initCalibration()
         
         # Then, set all their informations
-        self.setHomePageFeatures()
+        self.setHomepage()
+        self.setCalibration()
         
         self.homepage.show()
             
@@ -40,6 +41,14 @@ class MainWindow (QMainWindow):
     def initCalibration(self):
         return Calibration(self)
     
-    def setHomePageFeatures(self):
+    def setHomepage(self):
         # Set start btn to open the calibration page
         self.homepage.setStartBtn(self.calibration)
+        
+        
+    def setCalibration(self):
+        # Set up both the upload buttons
+        self.calibration.setSpinBoxes()
+        self.calibration.setUploadBtns("stCamBtn")
+        self.calibration.setUploadBtns("mvCamBtn")
+        self.calibration.setCalibrationBtn()
