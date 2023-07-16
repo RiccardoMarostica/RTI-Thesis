@@ -4,8 +4,10 @@ from PyQt6.QtCore import *
 
 from constants import *
 
-from gui.classes.homepage import Homepage
-from gui.classes.calibration import Calibration
+from gui.homepage import Homepage
+from gui.calibration import Calibration
+from gui.videoAnalysis import VideoAnalysis
+from gui.pointSelection import PointSelection
 
 class MainWindow (QMainWindow):
         
@@ -25,10 +27,13 @@ class MainWindow (QMainWindow):
         # Initalise the pages
         self.homepage = self.initHomepage()
         self.calibration = self.initCalibration()
+        self.videoAnalysis = self.initVideoAnalysis()
+        self.pointSelection = self.initPointSelection()
         
         # Then, set all their informations
         self.setHomepage()
         self.setCalibration()
+        self.setVideoAnalysis()
         
         self.homepage.show()
             
@@ -41,14 +46,25 @@ class MainWindow (QMainWindow):
     def initCalibration(self):
         return Calibration(self)
     
+    def initVideoAnalysis(self):
+        return VideoAnalysis(self)
+    
+    def initPointSelection(self):
+        return PointSelection(self)
+    
     def setHomepage(self):
         # Set start btn to open the calibration page
-        self.homepage.setStartBtn(self.calibration)
-        
+        self.homepage.setStartBtn(self.videoAnalysis)
         
     def setCalibration(self):
         # Set up both the upload buttons
         self.calibration.setSpinBoxes()
         self.calibration.setUploadBtns("stCamBtn")
         self.calibration.setUploadBtns("mvCamBtn")
-        self.calibration.setCalibrationBtn()
+        self.calibration.setCalibrationBtn(self.videoAnalysis)
+        
+    def setVideoAnalysis(self):
+        self.videoAnalysis.setSpinBoxes()
+        self.videoAnalysis.setUploadBtns("stCamBtn")
+        self.videoAnalysis.setUploadBtns("mvCamBtn")
+        self.videoAnalysis.setStartBtn(self.pointSelection)

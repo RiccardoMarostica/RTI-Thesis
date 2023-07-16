@@ -5,6 +5,8 @@ from PyQt6 import uic
 
 import os
 
+from gui.pointSelection import PointSelection
+
 class Homepage(QWidget):
     def __init__(self, parent: QWidget) -> None:
         super(Homepage, self).__init__(parent)
@@ -17,13 +19,13 @@ class Homepage(QWidget):
         
         self.hide()
                 
-    def setStartBtn(self, calibrationPage: QWidget):
+    def setStartBtn(self, dstPage: QWidget):
         # Find the button responsible to start the calibration
         self.start : QPushButton = self.findChild(QPushButton, 'startBtn')
         
         # Now add the event to show the other widget, and hide this one
-        self.start.clicked.connect(lambda: self.showCalibration(calibrationPage))
+        self.start.clicked.connect(lambda: self.showCalibration(dstPage))
 
-    def showCalibration(self, calibrationPage: QWidget):
+    def showCalibration(self, dstPage: QWidget):
         self.hide()
-        calibrationPage.show()
+        dstPage.show()

@@ -11,7 +11,7 @@ from classes.videoSynchronisation import VideoSynchronisation
 from classes.cameraCalibration import CameraCalibration
 from classes.video import Video
 from classes.rtiAlgorithm import RTI
-from gui.classes.mainWindow import MainWindow
+from gui.mainWindow import MainWindow
 
 from constants import *
 

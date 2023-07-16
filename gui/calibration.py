@@ -64,11 +64,11 @@ class Calibration(QWidget):
         if axis == "Y":
             self.cornersY = self.yAxisSb.value()  
                 
-    def setCalibrationBtn(self):
+    def setCalibrationBtn(self, dstPage: QWidget):
         
+        # Set button to start with camera calibration
         self.calibBtn = self.findChild(QPushButton, 'startBtn')
-    
-        self.calibBtn.clicked.connect(self.startCalibration)
+        self.calibBtn.clicked.connect(lambda: self.startCalibration(dstPage))
         
         
     def uploadVideos(self, camId):
@@ -83,33 +83,37 @@ class Calibration(QWidget):
         self.enableStartCalibBtn()
         
         
-    def startCalibration(self):
+    def startCalibration(self, dstPage: QWidget):
         
-        # Initalise the video, passing the paths to open the video with OpenCV
-        stCamVideo = Video(self.params.getStCamCalibPath())
-        mvCamVideo = Video(self.params.getMvCamCalibPath())
+        # # Initalise the video, passing the paths to open the video with OpenCV
+        # stCamVideo = Video(self.params.getStCamCalibPath())
+        # mvCamVideo = Video(self.params.getMvCamCalibPath())
         
-        print("Starting with calibration...")
+        # print("Starting with calibration...")
         
-        corners = (self.cornersX, self.cornersY)
+        # corners = (self.cornersX, self.cornersY)
+                
+        # # Then, start with calibration
+        # stCamCalibration = CameraCalibration(stCamVideo, corners)
+        # mvCamCalibration = CameraCalibration(mvCamVideo, corners)
         
-        print("Corners: ", corners)
+        # if not stCamCalibration.calibrateCamera() or not mvCamCalibration.calibrateCamera():
+        #     # Something went wrong in one of the two cameras
+        #     print("Something went wrong when calibrating the two cameras. ")
+        #     exit(-1)
         
-        # Then, start with calibration
-        stCamCalibration = CameraCalibration(stCamVideo, corners)
-        mvCamCalibration = CameraCalibration(mvCamVideo, corners)
+        # print("Camera calibration completed. ")
         
-        if not stCamCalibration.calibrateCamera() or not mvCamCalibration.calibrateCamera():
-            # Something went wrong in one of the two cameras
-            print("Something went wrong when calibrating the two cameras. ")
-            exit(-1)
-        
-        print("Camera calibration completed. ")
-        
-        # Otherwise, store the two instances inside the parameter class
-        self.params.setCamsCalibData(stCamCalibration, mvCamCalibration)
-        
+        # # Otherwise, store the two instances inside the parameter class
+        # self.params.setCamsCalibData(stCamCalibration, mvCamCalibration)
+
+        # Then, hide the current widget and show the new one
+        self.hide()
+        dstPage.show()
+    
+    
     def enableStartCalibBtn(self):
+        # Check if it's possible to enable the button to start camera calibration
         if self.params.getStCamCalibPath() is not None and self.params.getMvCamCalibPath() is not None and self.cornersX > 0 and self.cornersY > 0:
             # Enable the start calibration button, in case both paths are set and the corners are positive
             self.calibBtn.setEnabled(True)
