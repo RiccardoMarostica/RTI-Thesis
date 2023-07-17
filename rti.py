@@ -189,7 +189,7 @@ def main():
                 lightVector = None
         
             # Show the light plot of the calculated light vector
-            cirlePlotPnP = rti.showCircleLightDirection(lightVector) 
+            cirlePlotPnP = rti.showCircleLightDirection(lightVector)
         
             # Plot images
             cv.imshow('Light plot PnP', cirlePlotPnP)

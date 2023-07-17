@@ -13,7 +13,7 @@ class MainWindow (QMainWindow):
         
     def __init__(self) -> None:
         # Call the init of the father class (QWidget, which is the window)
-        super().__init__()
+        super(MainWindow, self).__init__()
         
         # Then, initalise the window
         self.initialiseWindow()
@@ -34,6 +34,7 @@ class MainWindow (QMainWindow):
         self.setHomepage()
         self.setCalibration()
         self.setVideoAnalysis()
+        self.setPointSelection()
         
         self.homepage.show()
             
@@ -68,3 +69,10 @@ class MainWindow (QMainWindow):
         self.videoAnalysis.setUploadBtns("stCamBtn")
         self.videoAnalysis.setUploadBtns("mvCamBtn")
         self.videoAnalysis.setStartBtn(self.pointSelection)
+        
+    def setPointSelection(self):
+        self.pointSelection.geometryChanged.connect(self.handleGeometry)
+        self.pointSelection.setStartBtn()
+        
+    def handleGeometry(self, geometry):
+        self.setGeometry(geometry)

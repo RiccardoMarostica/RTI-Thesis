@@ -14,7 +14,6 @@ class Parameters (Singleton):
 
     defaultBitRate = 44100
 
-    defaultFrameSize = 0
 
     # CALIBRATION VARS
     mvCamCalibPath = None
@@ -25,6 +24,11 @@ class Parameters (Singleton):
     # VIDEO ANALYSIS VARS
     mvCamVideoPath = None
     stCamVideoPath = None
+    
+    # VIDEO VARS
+    defaultFrameSize = 0
+    defaultWidth = 640
+    defaultHeight = 480
 
     def __init__(self) -> None:
         Singleton.__init__(self)
@@ -77,4 +81,10 @@ class Parameters (Singleton):
         
     def getWorldDefaultSize(self):
         return self.defaultFrameSize    
+    
+    def getDefaultFrameSize(self, type):
+        if type == "Landscape":
+            return (self.defaultWidth, self.defaultHeight)
+        if type == "Portrait":
+            return (self.defaultHeight, self.defaultWidth)
     

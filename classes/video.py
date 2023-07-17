@@ -119,6 +119,9 @@ class Video:
         """
         if self.isOpen():
             self.video.set(cv.CAP_PROP_POS_FRAMES, pos)
+    
+    def resizeVideo(self, frame, dim):
+        return cv.resize(frame, dim)
 
     def showFrame(self, frame, winname = "Frame", debug=False):
         """The function shows a frame using the OpenCv method imshow()

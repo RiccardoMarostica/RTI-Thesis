@@ -22,12 +22,6 @@
     <height>400</height>
    </size>
   </property>
-  <property name="maximumSize">
-   <size>
-    <width>1920</width>
-    <height>1080</height>
-   </size>
-  </property>
   <property name="mouseTracking">
    <bool>false</bool>
   </property>
@@ -47,42 +41,14 @@
       <enum>QLayout::SetMaximumSize</enum>
      </property>
      <item>
-      <widget class="QLabel" name="titleLabel">
-       <property name="enabled">
+      <widget class="QLabel" name="imgLbl">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="scaledContents">
         <bool>true</bool>
        </property>
-       <property name="font">
-        <font>
-         <family>Avenir Next</family>
-         <pointsize>27</pointsize>
-        </font>
-       </property>
-       <property name="autoFillBackground">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Reflectance Transform Imaging</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
       </widget>
-     </item>
-     <item>
-      <spacer name="verticalSpacer">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Preferred</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
      </item>
      <item>
       <widget class="QPushButton" name="startBtn">
@@ -108,25 +74,9 @@
         <string/>
        </property>
        <property name="text">
-        <string>Start with RTI</string>
+        <string>Start with Relighting</string>
        </property>
       </widget>
-     </item>
-     <item>
-      <spacer name="vSpacerBottom">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Preferred</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
      </item>
     </layout>
    </item>

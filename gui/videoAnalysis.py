@@ -8,6 +8,9 @@ import os
 # Custom class imports
 from classes.parameters import Parameters
 
+# Import point selection class, to see the methods
+from gui.pointSelection import PointSelection
+
 class VideoAnalysis(QWidget):
     def __init__(self, parent: QWidget) -> None:
         super(VideoAnalysis, self).__init__(parent)
@@ -30,6 +33,9 @@ class VideoAnalysis(QWidget):
     def setSpinBoxes(self):
         # Set spin boxes in order to get their value
         self.frameSizeSb = self.findChild(QSpinBox, 'frameSizeInput')
+        
+        # Get the default value of the spin box
+        self.defaultSize = self.frameSizeSb.value()
         
         # Connect to the function when value changed
         self.frameSizeSb.valueChanged.connect(self.setFrameSizeValue)
@@ -67,12 +73,15 @@ class VideoAnalysis(QWidget):
         
         self.enableStartBtn()
          
-    def startPointSelection(self, dstPage: QWidget):
+    def startPointSelection(self, dstPage: PointSelection):
         # Before moving to next widget (point selection), store the last information
         self.params.setWorldDefaultSize(self.defaultSize)
 
         # Then, hide the current widget and show the new one
         self.hide()
+    
+        # Before showing the point selection page, set the image to choose points
+        dstPage.setImage()
         dstPage.show()
        
     def enableStartBtn(self):
