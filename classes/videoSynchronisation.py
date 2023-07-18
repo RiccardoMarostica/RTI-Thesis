@@ -5,15 +5,13 @@ os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg/5.1.2_5/bin/ffmp
 
 from constants import *
 from classes.video import Video
+from classes.parameters import Parameters
 
 class VideoSynchronisation:
     """This class is used to synchronise the two videos looking at the object of interest (static camera and moving camera). In fact, the two videos are not temporally synchronised, meaning that the first frame of the first video does not correspond to the first frame of the second video.\n
     To perform video synchonisation it's necessary to calculate the time skew between two videos. From the time skew, then it's possible to calculate the frame difference beteween the two videos.\n
     To calculate the time skew, audio sampling is extracted and used to detect the difference between the two tracks.
     """
-    
-    # Get default audio sampling rate
-    audio_sampling_rate = DEFAULT_SAMPLING_AUDIO_RATE
     
     def __init__(self, path1 : str, path2 : str) -> None:
         """The constructor takes the file path of the two videos, to extract their audio and start with synchronisation
@@ -25,6 +23,11 @@ class VideoSynchronisation:
         # Through MoviePy get audio file clip from both video files using the relative paths
         self.audio1 = mp.AudioFileClip(path1)
         self.audio2 = mp.AudioFileClip(path2)
+        
+        self.params = Parameters()
+            
+        # Get default audio sampling rate
+        self.audio_sampling_rate = self.params.defaultBitRate
         
         # Suppose at the beginning the offset is 0
         self.offset = 0
@@ -67,6 +70,9 @@ class VideoSynchronisation:
         else:
             self.offset = offset_avg
 
+    
+    def getOffset(self):
+        return self.offset
     
     def getFrameDifference(self, fps : int) -> int:
         """The functions returns the frame difference between the two videos.

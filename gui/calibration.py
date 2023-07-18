@@ -85,27 +85,27 @@ class Calibration(QWidget):
         
     def startCalibration(self, dstPage: QWidget):
         
-        # # Initalise the video, passing the paths to open the video with OpenCV
-        # stCamVideo = Video(self.params.getStCamCalibPath())
-        # mvCamVideo = Video(self.params.getMvCamCalibPath())
+        # Initalise the video, passing the paths to open the video with OpenCV
+        stCamVideo = Video(self.params.getStCamCalibPath())
+        mvCamVideo = Video(self.params.getMvCamCalibPath())
         
-        # print("Starting with calibration...")
+        print("Starting with calibration...")
         
-        # corners = (self.cornersX, self.cornersY)
+        corners = (self.cornersX, self.cornersY)
                 
-        # # Then, start with calibration
-        # stCamCalibration = CameraCalibration(stCamVideo, corners)
-        # mvCamCalibration = CameraCalibration(mvCamVideo, corners)
+        # Then, start with calibration
+        stCamCalibration = CameraCalibration(stCamVideo, corners)
+        mvCamCalibration = CameraCalibration(mvCamVideo, corners)
         
-        # if not stCamCalibration.calibrateCamera() or not mvCamCalibration.calibrateCamera():
-        #     # Something went wrong in one of the two cameras
-        #     print("Something went wrong when calibrating the two cameras. ")
-        #     exit(-1)
+        if not stCamCalibration.calibrateCamera() or not mvCamCalibration.calibrateCamera():
+            # Something went wrong in one of the two cameras
+            print("Something went wrong when calibrating the two cameras. ")
+            exit(-1)
         
-        # print("Camera calibration completed. ")
+        print("Camera calibration completed. ")
         
-        # # Otherwise, store the two instances inside the parameter class
-        # self.params.setCamsCalibData(stCamCalibration, mvCamCalibration)
+        # Otherwise, store the two instances inside the parameter class
+        self.params.setCamsCalibData(stCamCalibration, mvCamCalibration)
 
         # Then, hide the current widget and show the new one
         self.hide()

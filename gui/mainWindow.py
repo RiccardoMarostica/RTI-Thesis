@@ -55,7 +55,7 @@ class MainWindow (QMainWindow):
     
     def setHomepage(self):
         # Set start btn to open the calibration page
-        self.homepage.setStartBtn(self.videoAnalysis)
+        self.homepage.setStartBtn(self.calibration)
         
     def setCalibration(self):
         # Set up both the upload buttons

@@ -1,5 +1,10 @@
 from classes.cameraCalibration import CameraCalibration
 
+class LightDirection:
+    def __init__(self, frame, lightVector) -> None:
+        self.frame = frame
+        self.ligthVector = lightVector
+        pass
 
 class Singleton:
     """Alex Martelli implementation of Singleton (Borg)
@@ -13,7 +18,7 @@ class Singleton:
 class Parameters (Singleton):
 
     defaultBitRate = 44100
-
+    defaultMsecVideoGap = 1500
 
     # CALIBRATION VARS
     mvCamCalibPath = None
@@ -29,6 +34,9 @@ class Parameters (Singleton):
     defaultFrameSize = 0
     defaultWidth = 640
     defaultHeight = 480
+    
+    # LIGHT VECTOR
+    lightVectors = []
 
     def __init__(self) -> None:
         Singleton.__init__(self)
@@ -53,8 +61,8 @@ class Parameters (Singleton):
     def getStCamCalibData(self):
         return self.stCamCalibration
 
-    def getStCamCalibData(self):
-        return self.stCamCalibration
+    def getmvCamCalibData(self):
+        return self.mvCamCalibration
 
     def setCamsCalibData(self, camSt: CameraCalibration, camMv: CameraCalibration):
         # Store both calibration class inside the class
@@ -82,9 +90,15 @@ class Parameters (Singleton):
     def getWorldDefaultSize(self):
         return self.defaultFrameSize    
     
-    def getDefaultFrameSize(self, type):
+    def getFrameDefaultSize(self, type):
         if type == "Landscape":
             return (self.defaultWidth, self.defaultHeight)
         if type == "Portrait":
             return (self.defaultHeight, self.defaultWidth)
+        
+    def addLightVector(self, light, frame):
+        self.lightVectors.append(LightDirection(frame, light))
+        
+    def getLightVectors(self):
+        return self.lightVectors
     
