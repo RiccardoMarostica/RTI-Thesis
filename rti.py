@@ -1,11 +1,6 @@
 # Import default modules
-import cv2 as cv
-import numpy as np
-import sys
-import os
-import datetime
-
-from PyQt6.QtWidgets import QApplication
+import os, h5py, cv2 as cv, numpy as np
+from datetime import datetime
 
 # Import classes
 from classes.videoSynchronisation import VideoSynchronisation
@@ -45,7 +40,6 @@ def main():
     # Retrieve K for both cameras
     kStatic = calibrationStatic.getIntrinsicMatrix()
     kMoving = calibrationMoving.getIntrinsicMatrix()
-    # kMoving = rti.getDefaultK(videoMoving)
 
     # Store the first frame of the Static Camera
     _, firstStaticFrame = videoStatic.getCurrentFrame()
@@ -99,15 +93,16 @@ def main():
     timeStaticVideo = 0.
     timeMovingVideo = 0.
     
-    # Variable used to move both videos of a specific time (in ms), based on the current iteration
-    iteration = 0
+    # Number of frames read
+    nFrames = 0
+    
+    # Array with shape (400, 400, 2) which contains the sum of the U and V value of each pixel along the video
+    sumUV = np.zeros((400, 400, 2))
+    
+    # Array with shape (nFrames, 400, 400, 3) where, for each pixel, stores the intensity of it, and the light value X and Y (costant along the frame)
+    lightData = []
         
     while videoStatic.isOpen() and videoMoving.isOpen():
-        
-        # Move the video every [DEFAULT_MSEC_GAP_VIDEO] ms to obtain less frames
-        videoStatic.setVideoPosition(int(iteration * DEFAULT_MSEC_GAP_VIDEO))
-        videoMoving.setVideoPosition(int(iteration * DEFAULT_MSEC_GAP_VIDEO))
-        
         # Get frame from each video
         retStatic, staticFrame = videoStatic.getCurrentFrame()
         retMoving, movingFrame = videoMoving.getCurrentFrame()
@@ -136,10 +131,6 @@ def main():
         # UniVE video
         _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
         _, ptsMovingCam, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))    
-        
-        # # Paperclip video
-        # _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
-        # _, ptsMovingCam, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))
         
         if homographyStaticToStatic is not None and homographyStaticToMoving is not None:
             
@@ -202,49 +193,67 @@ def main():
             lightVector = None
         
         if lightVector is not None:
-            # Just store if the vector is defined
-            rti.storeLightVector(worldFrame, lightVector)      
+            # First, convert the frame from GRAY to BGR
+            # Then from BGR to YUV, to extract the intensity and calculate U and V mean
+            worldFrameBGR = cv.cvtColor(worldFrame, cv.COLOR_GRAY2BGR)
+            worldFrameYUV = cv.cvtColor(worldFrameBGR, cv.COLOR_BGR2YUV)
+            
+            # Get Y, U, V
+            Y, U, V = cv.split(worldFrameYUV)
+            
+            # Get the light position X and Y (Z can be removed now)            
+            light = np.tile(lightVector[:2].flatten(), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 1))
         
-        iteration += 1
-        
+            # Now, store an array containing the intensity of the pixels and the respective light
+            data = np.dstack((Y, light))
+            
+            # Now get the current UV with shape (400, 400, 2), and sum their values inside the sumUV matrix with shape (400, 400, 2)
+            sumUV = sumUV + np.dstack((U, V))
+            
+            # Append the data
+            lightData.append(data)
+            
+            # Increament number of frames acquired
+            nFrames += 1
+            
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
-        
 
-    cv.destroyAllWindows()
-    
-    lightDirections = rti.getLightDirections()
-
-    print("Frames aquired: ", len(lightDirections))
-    
-    # print("Calculation of the light directions completed without errors")
-    
-    # print("Starting with RBF Interpolation...")
-    
-    # # rti.applRBFInterpolation(11, 11, DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE)
-    
-    # print("RBF Interpolation done")
-    
-    # rti.applyRelighting()
-    
-    # release videos and destroy windows
+    # Release videos and destroy windows
     videoStatic.releaseVideo()
     videoMoving.releaseVideo()
-    cv.destroyAllWindows()
+    cv.destroyAllWindows()  
     
-def initaliseMainWindow():
-    # Build the Application (only one instance can exsists)
-    app = QApplication([])
+    # Calculate UVMean
+    meanUV = sumUV / nFrames
     
-    # Show the main window
-    mainWindow = MainWindow()
+    # Convert from list 2 array
+    lightData = np.stack(lightData)
     
-    # And shows it
-    sys.exit(app.exec())
+    # Now, store this values inside a file    
+    now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
+    dataName = 'unive'
     
+    # First get the base dir, and out dir
+    BASE_DIR = "examples/%s_example"%dataName + "_%s/"%now_string
     
+    try:
+        # Creating the base dir
+        os.mkdir(BASE_DIR)
+    except:
+        # Not possible to create the dir, close the app
+        exit(-1)
+
+    # Open the file
+    fileName = BASE_DIR + "%s.h5"%dataName
     
+    f = h5py.File(fileName, "w")
+    # ... and create datasets
+    f.create_dataset("lightdata", lightData.shape, data=lightData)
+    f.create_dataset("UVMean", meanUV.shape, data=meanUV)
+    # Then stop writing
+    f.close()
+        
 if __name__ == "__main__":
-    # initaliseMainWindow()
     main()

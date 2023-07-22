@@ -1,144 +1,38 @@
-# import cv2 as cv
 # import numpy as np
-# import matplotlib.pyplot as plt
-# import time
+# # Creating the first array (400, 400)
+# array_1 = np.random.rand(400, 400)
 
-# from constants import *
+# # Creating the second array (2,)
+# array_2 = np.array([10, 20])
 
-# # Import classes
-# from classes.video import Video
-# from classes.rtiAlgorithm import RTI
+# print("Array 2 shape: ", array_2.shape)
 
-# rti = RTI()
+# # Reshaping the second array to match the shape of the first array (400, 400, 2)
+# reshaped_array_2 = np.tile(array_2, (400, 400, 1))
 
-# videoStatic = Video(STATIC_VIDEO_FILE_PATH)
-# videoMoving = Video(MOVING_VIDEO_FILE_PATH)
+# print("Array 1 shape: ", array_1.shape)
+# print("Array 2 shape: ", reshaped_array_2.shape)
 
-# print(f"Width: {videoMoving.getWidth()}")
-# print(f"Height: {videoMoving.getHeight()}")
+# # Now, stack both arrays together along a new axis to get the desired result
+# result_array = np.dstack((array_1, reshaped_array_2))
 
+# print(result_array.shape)  # Output: (400, 400, 3)
 
-# while(videoMoving.isOpen()):
-#     ret, frame = videoMoving.getCurrentFrame()
-    
-#     if ret == True:
-        
-#         cv.rectangle(frame, (400, 125), (1350, 1080), (0, 255, 0), 2)
-        
-#         cv.imshow("Frame", frame)
-        
-#         # Press Q on the keyboard to exit.
-#         if (cv.waitKey(25) & 0xFF == ord('q')):
-#             break
-# # frameDifference = -9    # Frame difference between book (filename) video camera
-
-# # if (frameDifference > 0):
-# #     print("Static Video shifted")
-# #     # If the offset is positive, then the first video starts sooner.
-# #     # So move its position in order to start as the second video
-# #     videoStatic.setVideoFrame(abs(frameDifference))
-# #     videoMoving.setVideoFrame()
-# # else:
-# #     print("Moving Video shifted")
-# #     # ... or vice versa
-# #     videoStatic.setVideoFrame()
-# #     videoMoving.setVideoFrame(abs(frameDifference))
-        
-# # timeStaticVideo = 0.
-# # timeMovingVideo = 0.
-        
-# # while (videoStatic.isOpen() and videoMoving.isOpen()):
-    
-# #     retStatic, staticFrame = videoStatic.getCurrentFrame()
-# #     retMoving, movingFrame = videoMoving.getCurrentFrame()
-    
-# #     if retStatic != True or retMoving != True:
-# #         break
-    
-# #     # For each iteration, sum the time for each video based on the tick (1 / FPS_video)
-# #     timeStaticVideo += 1. / videoStatic.getFPS()
-# #     timeMovingVideo += 1. / videoMoving.getFPS()
-    
-# #     # Now depends on which video has lower FPS
-# #     if videoStatic.getFPS() < videoMoving.getFPS():
-# #         # Video static is behind more than 1 frame, so skip it to recover the loss
-# #         if timeStaticVideo > timeMovingVideo + (1. / videoMoving.getFPS()):
-# #             retStatic, staticFrame = videoStatic.getCurrentFrame()
-# #     else:    
-# #         # Video moving is behind more than 1 frame, so skip it to recover the loss
-# #         if timeMovingVideo > timeStaticVideo + (1. / videoMoving.getFPS()):
-# #             retMoving, movingFrame = videoMoving.getCurrentFrame()
-    
-# #     staticFrame = staticFrame[1000:3200, 0: 2160]    # Crop for book
-# #     movingFrame = movingFrame[50: 1080, 300: 1400]  # crop for book
-            
-# #     cv.imshow("static", staticFrame)
-# #     cv.imshow("moving", movingFrame)
-    
-# #     # Press Q on the keyboard to exit.
-# #     if (cv.waitKey(25) & 0xFF == ord('q')):
-# #         break
-
-# cv.destroyAllWindows()
-# videoStatic.releaseVideo()
-# videoMoving.releaseVideo()
-
-import collections
-from itertools import *
+import os
+from datetime import datetime
+import h5py
 import numpy as np
 
+datafile = "examples/unive_example_23_07_22_19_05/unive.h5"
 
-def prime_factors(n):
-    i = 2
-    while i * i <= n:
-        if n % i == 0:
-            n /= i
-            yield i
-        else:
-            i += 1
+with h5py.File(datafile,"r") as f:
+    # Array with 3 channels: intensity, light_x, light_y
+    data_ = np.array( f["lightdata"] ) 
+    # In this array we have the mean UV in each position 
+    UVmean = np.array(f["UVMean"])
+    #:, 0, 0, 1: => In all the 2756 frames takes the first array in the shape (400, 400) and take the last two elements which are constants (which are light_X, light_Y)
+    all_lights = data_[:,0,0,1:] # light vector is constant in each image
 
-    if n > 1:
-        yield n
-
-
-def prod(iterable):
-    result = 1
-    for i in iterable:
-        result *= i
-    return result
-
-
-def get_divisors(n):
-    pf = prime_factors(n)
-
-    pf_with_multiplicity = collections.Counter(pf)
-
-    powers = [
-        [factor ** i for i in range(count + 1)]
-        for factor, count in pf_with_multiplicity.items()
-    ]
-
-    res = []
-    for prime_power_combo in product(*powers):
-        res.append(prod(prime_power_combo))
-    
-    return res
-    
-divisors = get_divisors(60)
-
-divisors = sorted(divisors)
-
-diff = 10**20
-pair = []
-
-for i in range(int(len(divisors) / 2)):
-    v1 = int(divisors[i])
-    v2 = int(divisors[len(divisors) - 1 - i])
-    if v1 - v2 < diff:
-        diff = abs(v1 - v2)
-        pair = [v1, v2]
-        
-lx, ly = np.meshgrid(np.linspace(-1., 1., pair[0]), np.linspace(-1., 1., pair[1]))
-
-xy = np.rec.fromarrays([lx, ly])
-print(xy.tolist())
+print("UVmean: ", UVmean.shape)
+print("all data: ", data_.shape)
+print("all lights: ", all_lights.shape)

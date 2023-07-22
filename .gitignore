@@ -2,3 +2,5 @@
 /images
 /outputs
 /__pycache__
+*_example/
+/examples
