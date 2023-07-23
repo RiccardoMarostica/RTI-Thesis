@@ -107,9 +107,6 @@ def main():
         retStatic, staticFrame = videoStatic.getCurrentFrame()
         retMoving, movingFrame = videoMoving.getCurrentFrame()
         
-        if retStatic != True or retMoving != True:
-            break
-        
         # For each iteration, sum the time for each video based on the tick (1 / FPS_video)
         timeStaticVideo += 1. / videoStatic.getFPS()
         timeMovingVideo += 1. / videoMoving.getFPS()
@@ -123,6 +120,12 @@ def main():
             # Video moving is behind more than 1 frame, so skip it to recover the loss
             if timeMovingVideo > timeStaticVideo + (1. / videoMoving.getFPS()):
                 retMoving, movingFrame = videoMoving.getCurrentFrame()
+        
+        checkStaticFrame = (staticFrame is None or np.shape(staticFrame) == () or np.sum(staticFrame) == 0)
+        checkMovingFrame = (movingFrame is None or np.shape(movingFrame) == () or np.sum(movingFrame) == 0)
+            
+        if retStatic != True or retMoving != True or checkStaticFrame or checkMovingFrame:
+            break
         
         # Convert frames to grayscale
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
@@ -171,22 +174,22 @@ def main():
             # Now, let's try to cross-correlate the two warped images.
             # If the correlation is high, then the images are similar, so we can compute the light vector
             # Otherwise, skip the frame
-            imgCorr = cv.matchTemplate(worldFrame, warpedMoving, cv.TM_CCOEFF_NORMED)
-                
+            imgCorr = cv.matchTemplate(worldFrame, warpedMoving, cv.TM_CCORR_NORMED)
+                            
             # Set as lower threshold 0.6 to have high confidentiality
-            if imgCorr[0][0] >= 0.5:
+            if imgCorr[0][0] >= 0.96:
                 # Calculate the light vector using PnP
                 lightVector = rti.getLigthWithSolvePnP(points3d, np.squeeze(points2d), kMoving)
             else:
                 lightVector = None
         
             # Show the light plot of the calculated light vector
-            cirlePlotPnP = rti.showCircleLightDirection(lightVector) 
+            cirlePlotPnP = rti.showCircleLightDirection(lightVector)
         
             # Plot images
             cv.imshow('Light plot PnP', cirlePlotPnP)
             cv.imshow('World frame', worldFrame)
-            cv.imshow('World frame moving', warpedMoving)
+            # cv.imshow('World frame moving', warpedMoving)
             
         else:
             # Otherwise, if one of the two homographies is not defined, then the light vector is None
@@ -215,11 +218,13 @@ def main():
             
             # Increament number of frames acquired
             nFrames += 1
+        
+        print(f"Frame stored: {nFrames}, on the total frames of: {videoStatic.getTotalFrames()}")
             
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
-
+        
     # Release videos and destroy windows
     videoStatic.releaseVideo()
     videoMoving.releaseVideo()
@@ -242,6 +247,7 @@ def main():
         # Creating the base dir
         os.mkdir(BASE_DIR)
     except:
+        print("Error creating the new folder. ")
         # Not possible to create the dir, close the app
         exit(-1)
 

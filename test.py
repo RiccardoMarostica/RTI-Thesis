@@ -22,17 +22,28 @@ import os
 from datetime import datetime
 import h5py
 import numpy as np
+  
+# Now, store this values inside a file    
+now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
+dataName = 'unive'
 
-datafile = "examples/unive_example_23_07_22_19_05/unive.h5"
+# First get the base dir, and out dir
+BASE_DIR = "examples/%s_example"%dataName + "_%s/"%now_string
 
-with h5py.File(datafile,"r") as f:
-    # Array with 3 channels: intensity, light_x, light_y
-    data_ = np.array( f["lightdata"] ) 
-    # In this array we have the mean UV in each position 
-    UVmean = np.array(f["UVMean"])
-    #:, 0, 0, 1: => In all the 2756 frames takes the first array in the shape (400, 400) and take the last two elements which are constants (which are light_X, light_Y)
-    all_lights = data_[:,0,0,1:] # light vector is constant in each image
+try:
+    # Creating the base dir
+    os.mkdir(BASE_DIR)
+except:
+    # Not possible to create the dir, close the app
+    exit(-1)
+# Open the file
+fileName = BASE_DIR + "%s.h5"%dataName
 
-print("UVmean: ", UVmean.shape)
-print("all data: ", data_.shape)
-print("all lights: ", all_lights.shape)
+print(fileName)
+
+f = h5py.File(fileName, "w")
+# ... and create datasets
+f.create_dataset("lightdata", (1,))
+f.create_dataset("UVMean", (1,))
+# Then stop writing
+f.close()
