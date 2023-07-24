@@ -18,32 +18,35 @@
 
 # print(result_array.shape)  # Output: (400, 400, 3)
 
-import os
-from datetime import datetime
-import h5py
-import numpy as np
-  
-# Now, store this values inside a file    
-now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
-dataName = 'unive'
+from classes.pca import PCAClass
+from classes.neuralNetwork import NeuralNetwork
 
-# First get the base dir, and out dir
-BASE_DIR = "examples/%s_example"%dataName + "_%s/"%now_string
+BASE_DIR = "examples/unive_example_23_07_23_18_10/"
+datafile = BASE_DIR + "unive.h5"
 
-try:
-    # Creating the base dir
-    os.mkdir(BASE_DIR)
-except:
-    # Not possible to create the dir, close the app
-    exit(-1)
-# Open the file
-fileName = BASE_DIR + "%s.h5"%dataName
+pca = PCAClass(BASE_DIR, datafile, 8)
 
-print(fileName)
+print("Reading dataset...")
+pca.readDataset()
+print("Reading dataset: DONE")
 
-f = h5py.File(fileName, "w")
-# ... and create datasets
-f.create_dataset("lightdata", (1,))
-f.create_dataset("UVMean", (1,))
-# Then stop writing
-f.close()
+
+print("Applying PCA...")
+pca.applyPCA()
+print("Applying PCA: DONE")
+
+
+nn = NeuralNetwork(BASE_DIR, 8)
+
+print("Extracting dataset...")
+nn.extractDatasets()
+print("Extracting dataset: DONE")
+
+
+print("Shufflings dataset...")
+nn.shuffleDataset()
+print("Shuffling dataset: DONE")
+
+print("Executing NN training...")
+nn.executeTraining()
+print("Executing NN trainin: DONE")

@@ -8,8 +8,10 @@ from classes.cameraCalibration import CameraCalibration
 from classes.video import Video
 from classes.rtiAlgorithm import RTI
 from classes.gui import MainWindow
+from classes.pca import PCAClass
 
 from constants import *
+from utils import *
 
 def main():
     
@@ -240,7 +242,7 @@ def main():
     now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
     dataName = 'unive'
     
-    # First get the base dir, and out dir
+    # First get the base dir
     BASE_DIR = "examples/%s_example"%dataName + "_%s/"%now_string
     
     try:
@@ -249,17 +251,23 @@ def main():
     except:
         print("Error creating the new folder. ")
         # Not possible to create the dir, close the app
-        exit(-1)
-
-    # Open the file
+        exit(-1)    
+    
+    # Set the name of the file containing the inital dataset for training
     fileName = BASE_DIR + "%s.h5"%dataName
     
-    f = h5py.File(fileName, "w")
-    # ... and create datasets
-    f.create_dataset("lightdata", lightData.shape, data=lightData)
-    f.create_dataset("UVMean", meanUV.shape, data=meanUV)
-    # Then stop writing
-    f.close()
+    # Then create the train dataset
+    storeTrainDataset(fileName, dataName, lightData, meanUV)
+    
+    # Create PCA class
+    pca = PCAClass(BASE_DIR, dataName, 8)
+    # Read the dataset and get ready to perform PCA
+    pca.readDataset()
+    # Perform PCA on training dataset
+    pca.applyPCA()
+        
+    
+
         
 if __name__ == "__main__":
     main()
