@@ -1,4 +1,5 @@
-import torch, h5py, numpy as np
+import torch, h5py, numpy as np, cv2 as cv
+from constants import *
 
 def getDevice():
     # Get cpu or gpu device for training
@@ -55,3 +56,8 @@ def predictRelight(model, L, proj_pixels, device = None):
         out[i,...] = Y_img        
 
     return out
+
+def normaliseCoordinate(value : float, dim: int) -> float:
+        # Convert the coordinates to normalized values between -1 and 1
+        return (value / dim) * 2 - 1
+  

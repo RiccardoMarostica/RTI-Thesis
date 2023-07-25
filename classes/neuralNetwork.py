@@ -4,9 +4,9 @@ from torch import nn
 import numpy as np
 import h5py
 from tqdm.auto import tqdm
-from datetime import datetime
 
-from utils import getDevice
+from utils import *
+from constants import *
 from classes.pixelEncoder import *
 
 class NeuralNetwork:
@@ -34,11 +34,11 @@ class NeuralNetwork:
         self.trainDataDir = baseDir + "pca_norm"
         self.outDir = baseDir + "models/"
                 
-        try:
-            os.mkdir(self.outDir)
-        except:
-            print("Output directory already present. ")
-            exit(-1)
+        # try:
+        #     os.mkdir(self.outDir)
+        # except:
+        #     print("Output directory already present. ")
+        #     exit(-1)
         
     def extractDatasets(self):        
         # Get projection pixels computed before and the training data of the model
@@ -156,12 +156,53 @@ class NeuralNetwork:
         train2 = self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr*1e-1, 10, device)
         
         # Build the optput dir to store the weights
-        now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
-        MODEL_PATH = self.outDir + now_string + ".pt"
+        
+        MODEL_PATH = self.outDir + "pixel-weights.pt"
         
         # Store them
         torch.save(model.state_dict(), MODEL_PATH)
-        print("Model saved in ", MODEL_PATH)
+        print("Model saved in ", MODEL_PATH)  
+        
+    def showNNResults(self):
+        # Get proj pixels file
+        proj_pixels_pca_file = self.trainDataDir + "/proj_pixels_pca_0%s.npy"%self.pcaNumber
+        self.proj_pixels = np.load(proj_pixels_pca_file)
+        
+        # Get model weights file
+        model_weights = self.outDir + "/pixel-weights.pt"
+        
+        B = np.zeros((2, 10), dtype=np.float32)
 
+        self.model = PixelEncoder( self.proj_pixels.shape[2]+2, B )
+        self.model.load_state_dict(torch.load(model_weights, map_location=torch.device('cpu')))
+        self.model.to(getDevice())
         
+        # Now start to plot the light
+        center_x = center_y = DEFAULT_SQUARE_SIZE // 2
+        radius = DEFAULT_SQUARE_SIZE // 2    
         
+        while(True):
+            # Draw plot image
+            relightPlot = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 3), dtype=np.uint8)
+            
+            # Draw the circle border
+            cv.circle(relightPlot, (center_x, center_y), radius, (255, 255, 255), 1)
+            cv.line(relightPlot, (0, center_y), (DEFAULT_SQUARE_SIZE, center_y), (255, 255, 255), 1)
+            cv.line(relightPlot, (center_x, 0), (center_x, DEFAULT_SQUARE_SIZE), (255, 255, 255), 1)
+            
+            cv.imshow("Relight plot", relightPlot)
+            cv.setMouseCallback("Relight plot", self.calculateRelightingFrame)
+            
+            # Press Q on the keyboard to exit.
+            if (cv.waitKey(25) & 0xFF == ord('q')):
+                return
+
+    def calculateRelightingFrame(self, event, x, y, flags, params):
+        if event == cv.EVENT_MOUSEMOVE:
+            light = np.array([[normaliseCoordinate(x, 400), normaliseCoordinate(y, 400)]])
+            # Generate test set output for comparison
+            images = predictRelight(self.model, light, self.proj_pixels)
+            
+            Y_img = images[0,:,:].astype(np.uint8)
+            
+            cv.imshow("Output: ", Y_img)
