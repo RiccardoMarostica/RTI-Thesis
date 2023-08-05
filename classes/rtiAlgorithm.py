@@ -5,12 +5,6 @@ from constants import *
 
 from classes.video import Video
 
-class LightDirection:
-    def __init__(self, frame, lightVector) -> None:
-        self.frame = frame
-        self.ligthVector = lightVector
-        pass
-
 class RTI:
     def __init__(self) -> None:
         """The constructor inistalise SIFT to get features from a frame, and FLANN for feature matching.
@@ -22,7 +16,6 @@ class RTI:
         self.flann = cv.FlannBasedMatcher_create()
         self.bruteforce = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
         
-        self.lightDirections : list[LightDirection] = []
         pass
 
     def getDefaultK(self, video : Video):
@@ -52,8 +45,45 @@ class RTI:
     def getPointFromImage(self, event, x, y, flags, params):
         if event == cv.EVENT_LBUTTONDOWN:
             params[0].append(np.array((x, y), dtype=np.float32))
-            print("Point added")
+            print(f"Point: ({x}, {y})")
         pass
+    
+    def getWorldHomographyFromPts(self, pts, defaultSize):
+        """The function computes the projective transformation (homography) between a set of four points choosen from the image plane and a set of destination points denoting the world space.
+
+        Args:
+            video (Video): Video class instance, with the video to get the world homography.
+
+        Returns:
+            Any: A Matrix represeting the Homograhy if the operation is successfull. An empty list, otherwise.
+        """
+
+        # Array used to store points, to then use them to calculate the homography
+        points = pts
+
+        # Set the destination points for the real world.
+        # In this case we are setting to project the image into a square
+        destinationPoints = np.array([
+            [0, 0],
+            [defaultSize, 0],
+            [defaultSize, defaultSize],
+            [0, defaultSize]
+        ])
+        
+        # Convert the points into integer value
+        points = np.array(points).astype(np.int32)
+        
+        try:
+            # Now we compute the Homography between the World system and the Static Camera
+            homograhy, _ = cv.findHomography(points, destinationPoints)
+            
+            # Store the points for future purpose
+            self.points = points
+
+            # Return the homography, even if not defined (None)
+            return homograhy
+        except:
+            return None
 
     def getWorldHomography(self, video: Video):
         """The function computes the projective transformation (homography) between a set of four points choosen from the image plane and a set of destination points denoting the world space.
@@ -250,23 +280,6 @@ class RTI:
         norm_l = np.linalg.norm(l)
         lightVector = l / norm_l
         return lightVector
-        
-    def storeLightVector(self, frame, lightVector):
-        """The function stores the information about a light vector and the respective frame, which will be used later to perform religthing.
-        
-        Args:
-            frame (Any): Frame related to a specific light vector
-            lightVector (Any): Light vector computed from Camera Pose
-        """
-        self.lightDirections.append(LightDirection(frame, lightVector))
-        
-    def getLightDirections(self) -> list[LightDirection]:
-        """The function returns the list of all the pairs (light vector, related frame) stored during the analysis process.
-        
-        Returns:
-            list[LightDirection]: List of LightDirection class
-        """
-        return self.lightDirections
             
     def showCircleLightDirection(self, light_direction):
         """The function shows light direction inside a plot.

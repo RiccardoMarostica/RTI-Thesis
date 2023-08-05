@@ -9,6 +9,7 @@ from classes.video import Video
 from classes.rtiAlgorithm import RTI
 from classes.pca import PCAClass
 from classes.neuralNetwork import NeuralNetwork
+from gui.mainWindow import MainWindow
 
 from constants import *
 from utils import *

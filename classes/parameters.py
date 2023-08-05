@@ -1,36 +1,104 @@
-class Parameters:
-    
-    # Fields - Parameters 
-    # Calibration video paths
-    STATIC_VIDEO_CALIBRATION_FILE_PATH = ""
-    MOVING_VIDEO_CALIBRATION_FILE_PATH = ""
-    # Video Analysis paths
-    STATIC_VIDEO_FILE_PATH = ""
-    MOVING_VIDEO_FILE_PATH = ""
-    
-    def __init__(self) -> None:
+from classes.cameraCalibration import CameraCalibration
+
+class LightDirection:
+    def __init__(self, frame, lightVector) -> None:
+        self.frame = frame
+        self.ligthVector = lightVector
         pass
+
+class Singleton:
+    """Alex Martelli implementation of Singleton (Borg)
+    http://python-3-patterns-idioms-test.readthedocs.io/en/latest/Singleton.html"""
+    _shared_state = {}
+
+    def __init__(self):
+        self.__dict__ = self._shared_state
+
+
+class Parameters (Singleton):
+
+    defaultBitRate = 44100
+    defaultMsecVideoGap = 1500
+
+    # CALIBRATION VARS
+    mvCamCalibPath = None
+    stCamCalibPath = None
+    stCamCalibration = None
+    mvCamCalibration = None
     
-    def getStaticCameraAnalysisPath(self) -> str:
-        return self.STATIC_VIDEO_FILE_PATH
+    # VIDEO ANALYSIS VARS
+    mvCamVideoPath = None
+    stCamVideoPath = None
     
-    def getMovingCameraAnalysisPath(self) -> str:
-        return self.MOVING_VIDEO_FILE_PATH
+    # VIDEO VARS
+    defaultFrameSize = 0
+    defaultWidth = 640
+    defaultHeight = 480
     
-    def getStaticCameraCalibrationPath(self) -> str:
-        return self.STATIC_VIDEO_CALIBRATION_FILE_PATH
+    # LIGHT VECTOR
+    lightVectors = []
+
+    def __init__(self) -> None:
+        Singleton.__init__(self)
+
+        pass
+
+    def getStCamCalibPath(self):
+        return self.stCamCalibPath
+
+    def getMvCamCalibPath(self):
+        return self.mvCamCalibPath
+
+    def setCamCalibPath(self, camId, path):
+        if camId == "stCamBtn":
+            # Store the path inside a class variable, which will be used to the calibration method
+            self.stCamCalibPath = path
+
+        if camId == 'mvCamBtn':
+            # Store the path inside a class variable, which will be used to the calibration method
+            self.mvCamCalibPath = path
+
+    def getStCamCalibData(self):
+        return self.stCamCalibration
+
+    def getmvCamCalibData(self):
+        return self.mvCamCalibration
+
+    def setCamsCalibData(self, camSt: CameraCalibration, camMv: CameraCalibration):
+        # Store both calibration class inside the class
+        self.stCamCalibration = camSt
+        self.mvCamCalibration = camMv
+
+    def setCamVideoPath(self, camId, path):
+        if camId == "stCamBtn":
+            # Store the path inside a class variable, which will be used to the calibration method
+            self.stCamVideoPath = path
+
+        if camId == 'mvCamBtn':
+            # Store the path inside a class variable, which will be used to the calibration method
+            self.mvCamVideoPath = path
+            
+    def getStCamVideoPath(self):
+        return self.stCamVideoPath
+
+    def getMvCamVideoPath(self):
+        return self.mvCamVideoPath
     
-    def getMovingCameraCalibrationPath(self) -> str:
-        return self.MOVING_VIDEO_CALIBRATION_FILE_PATH
+    def setWorldDefaultSize(self, defaultSize):
+        self.defaultFrameSize = defaultSize
+        
+    def getWorldDefaultSize(self):
+        return self.defaultFrameSize    
     
-    def setStaticCameraAnalysisPath(self, path: str) -> None:
-        self.STATIC_VIDEO_FILE_PATH = path
+    def getFrameDefaultSize(self, type):
+        if type == "Landscape":
+            return (self.defaultWidth, self.defaultHeight)
+        if type == "Portrait":
+            return (self.defaultHeight, self.defaultWidth)
+        
+    def addLightVector(self, light, frame):
+        self.lightVectors.append(LightDirection(frame, light))
+        
+    def getLightVectors(self):
+        return self.lightVectors
     
-    def setMovingCameraAnalysisPath(self, path: str) -> None:
-        self.MOVING_VIDEO_FILE_PATH = path
-    
-    def setStaticCameraCalibrationPath(self, path: str) -> None:
-        self.STATIC_VIDEO_CALIBRATION_FILE_PATH = path
-    
-    def setMovingCameraCalibrationPath(self, path: str) -> None:
-        self.MOVING_VIDEO_CALIBRATION_FILE_PATH = path

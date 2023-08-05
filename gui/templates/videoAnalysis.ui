@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>cameraCalibration</class>
- <widget class="QWidget" name="cameraCalibration">
+ <class>videoAnalysis</class>
+ <widget class="QWidget" name="videoAnalysis">
   <property name="windowModality">
    <enum>Qt::NonModal</enum>
   </property>
@@ -53,26 +53,95 @@
       <enum>QLayout::SetMaximumSize</enum>
      </property>
      <item>
-      <widget class="QLabel" name="titleLbl">
-       <property name="enabled">
-        <bool>true</bool>
+      <layout class="QHBoxLayout" name="titleHLayout">
+       <property name="sizeConstraint">
+        <enum>QLayout::SetDefaultConstraint</enum>
        </property>
-       <property name="font">
-        <font>
-         <family>Avenir Next</family>
-         <pointsize>27</pointsize>
-        </font>
+       <item>
+        <widget class="QLabel" name="titleLbl">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>450</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Avenir Next</family>
+           <pointsize>27</pointsize>
+          </font>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
+         <property name="lineWidth">
+          <number>1</number>
+         </property>
+         <property name="midLineWidth">
+          <number>0</number>
+         </property>
+         <property name="text">
+          <string>RTI Application</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
        </property>
-       <property name="autoFillBackground">
-        <bool>false</bool>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
        </property>
-       <property name="text">
-        <string>Camera Calibration</string>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>30</height>
+        </size>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
+      </spacer>
+     </item>
+     <item>
+      <layout class="QGridLayout" name="cornersGridLayout">
+       <property name="bottomMargin">
+        <number>10</number>
        </property>
-      </widget>
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="frameSizeHLayout">
+         <item>
+          <widget class="QLabel" name="frameSizeLbl">
+           <property name="text">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Choose the size of the frame&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="frameSizeInput">
+           <property name="minimum">
+            <number>100</number>
+           </property>
+           <property name="maximum">
+            <number>1080</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
      </item>
      <item>
       <layout class="QGridLayout" name="uploadGridLayout">
@@ -81,7 +150,7 @@
          <item>
           <widget class="QLabel" name="stCamLbl">
            <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Upload static camera calibration video&lt;/p&gt;&lt;p align=&quot;justify&quot;&gt;(camera with no light on)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Upload static camera video&lt;/p&gt;&lt;p align=&quot;justify&quot;&gt;(camera with no light on)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
           </widget>
          </item>
@@ -111,7 +180,7 @@
          <item>
           <widget class="QLabel" name="mvCamLbl">
            <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Upload moving camera calibration video&lt;/p&gt;&lt;p align=&quot;justify&quot;&gt;(camera with direct light on the object) &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Upload moving camera video&lt;/p&gt;&lt;p align=&quot;justify&quot;&gt;(camera with direct light on the object) &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
           </widget>
          </item>
@@ -137,6 +206,22 @@
         </layout>
        </item>
       </layout>
+     </item>
+     <item>
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>30</height>
+        </size>
+       </property>
+      </spacer>
      </item>
      <item>
       <widget class="QPushButton" name="startBtn">
@@ -165,7 +250,7 @@
         <string/>
        </property>
        <property name="text">
-        <string>Start Calibration</string>
+        <string>Start Video Analysis</string>
        </property>
       </widget>
      </item>
