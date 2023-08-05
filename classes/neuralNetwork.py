@@ -165,7 +165,7 @@ class NeuralNetwork:
         
     def showNNResults(self):
         # Get proj pixels file
-        proj_pixels_pca_file = self.trainDataDir + "/proj_pixels_pca_0%s.npy"%self.pcaNumber
+        proj_pixels_pca_file = self.trainDataDir + "/proj_pixels_pca.npy"
         self.proj_pixels = np.load(proj_pixels_pca_file)
         
         # Get model weights file
