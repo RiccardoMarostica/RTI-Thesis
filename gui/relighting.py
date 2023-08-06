@@ -96,7 +96,7 @@ class Relighting(QWidget):
         
     def setOutputImage(self):
         # Get base directory to extract the data and show them
-        dataDir = 'examples/unive_example_23_07_23_18_10/'
+        dataDir = 'relights/unive_example_23_07_23_18_10/'
         
         # Retrieve the file paths to extract data
         projPixelsPCAFile = dataDir + 'pca_norm/proj_pixels_pca.npy'

@@ -31,9 +31,12 @@ class Parameters (Singleton):
     stCamVideoPath = None
     
     # VIDEO VARS
-    defaultFrameSize = 0
-    defaultWidth = 640
-    defaultHeight = 480
+    outputImageSize = 0
+    defaultSizeOne = 1920
+    defaultSizeTwo = 1080
+    
+    defaultResizeOne = 960
+    defaultResizeTwo = 540
     
     # LIGHT VECTOR
     lightVectors = []
@@ -84,18 +87,25 @@ class Parameters (Singleton):
     def getMvCamVideoPath(self):
         return self.mvCamVideoPath
     
-    def setWorldDefaultSize(self, defaultSize):
-        self.defaultFrameSize = defaultSize
+    def setOutputImageSize(self, defaultSize):
+        self.outputImageSize = defaultSize
         
-    def getWorldDefaultSize(self):
-        return self.defaultFrameSize    
+    def getOutputImageSize(self):
+        return self.outputImageSize    
     
     def getFrameDefaultSize(self, type):
-        if type == "Landscape":
-            return (self.defaultWidth, self.defaultHeight)
-        if type == "Portrait":
-            return (self.defaultHeight, self.defaultWidth)
+        if type == "landscape":
+            return (self.defaultSizeOne, self.defaultSizeTwo)
+        if type == "portrait":
+            return (self.defaultSizeTwo, self.defaultSizeOne)
+    
+    def getResizedSizePointCapture(self, type):
+        if type == "landscape":
+            return (self.defaultResizeOne, self.defaultResizeTwo)
+        if type == "portrait":
+            return (self.defaultResizeTwo, self.defaultResizeOne)
         
+    
     def addLightVector(self, light, frame):
         self.lightVectors.append(LightDirection(frame, light))
         

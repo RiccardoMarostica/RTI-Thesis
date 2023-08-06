@@ -1,6 +1,8 @@
 import torch, h5py, numpy as np, cv2 as cv
 from constants import *
 
+from classes.video import Video
+
 def getDevice():
     # Get cpu or gpu device for training
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -57,10 +59,17 @@ def predictRelight(model, L, proj_pixels, device = None):
 
     return out
 
+def getVideoOrientation(video: Video):
+    return 'portrait' if video.getWidth() < video.getHeight() else 'landscape'
+
+def videoNeedsResize(video: Video, defaultSize: (int, int)):
+    if video.getWidth() > defaultSize[0] and video.getHeight() > defaultSize[1]:
+        return True
+    return False
+
 def normaliseCoordinate(value : float, dim: int) -> float:
         # Convert the coordinates to normalized values between -1 and 1
         return (value / dim) * 2 - 1
-
 
 def getRelightingPlot(dim: int):
     # Now start to plot the light

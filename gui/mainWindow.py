@@ -61,7 +61,7 @@ class MainWindow (QMainWindow):
     
     def setHomepage(self):
         # Set start btn to open the calibration page
-        self.homepage.setStartBtn(self.relighting)
+        self.homepage.setStartBtn(self.calibration)
         
     def setCalibration(self):
         # Set up both the upload buttons
@@ -81,12 +81,11 @@ class MainWindow (QMainWindow):
         self.pointSelection.setStartBtn()
         
     def setRelighting(self):
-        self.relighting.geometryChanged.connect(self.handleGeometry)
+        # self.relighting.geometryChanged.connect(self.handleGeometry)
         self.relighting.setOutputImage()
         self.relighting.setPlotImage()
         
     
     def handleGeometry(self, geometry):
-        print("Enters here")
         self.setGeometry(geometry)
         print("Geometry: ", self.geometry())
