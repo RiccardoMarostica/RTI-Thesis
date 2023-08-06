@@ -60,4 +60,21 @@ def predictRelight(model, L, proj_pixels, device = None):
 def normaliseCoordinate(value : float, dim: int) -> float:
         # Convert the coordinates to normalized values between -1 and 1
         return (value / dim) * 2 - 1
-  
+
+
+def getRelightingPlot(dim: int):
+    # Now start to plot the light
+    print("Dim: ", dim)
+    
+    center_x = center_y = dim // 2
+    radius = dim // 2    
+    
+    # Draw plot image
+    relightPlot = np.zeros((dim, dim, 3), dtype=np.uint8)
+    
+    # Draw the circle border
+    cv.circle(relightPlot, (center_x, center_y), radius, (255, 255, 255), 1)
+    cv.line(relightPlot, (0, center_y), (dim, center_y), (255, 255, 255), 1)
+    cv.line(relightPlot, (center_x, 0), (center_x, dim), (255, 255, 255), 1)
+    
+    return relightPlot

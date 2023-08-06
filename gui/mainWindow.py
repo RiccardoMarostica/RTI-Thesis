@@ -8,6 +8,7 @@ from gui.homepage import Homepage
 from gui.calibration import Calibration
 from gui.videoAnalysis import VideoAnalysis
 from gui.pointSelection import PointSelection
+from gui.relighting import Relighting
 
 class MainWindow (QMainWindow):
         
@@ -29,13 +30,15 @@ class MainWindow (QMainWindow):
         self.calibration = self.initCalibration()
         self.videoAnalysis = self.initVideoAnalysis()
         self.pointSelection = self.initPointSelection()
+        self.relighting = self.initRelighting()
         
         # Then, set all their informations
         self.setHomepage()
         self.setCalibration()
         self.setVideoAnalysis()
         self.setPointSelection()
-        
+        self.setRelighting()
+            
         self.homepage.show()
             
         # Show window since by default windows are hidden
@@ -53,9 +56,12 @@ class MainWindow (QMainWindow):
     def initPointSelection(self):
         return PointSelection(self)
     
+    def initRelighting(self):
+        return Relighting(self)
+    
     def setHomepage(self):
         # Set start btn to open the calibration page
-        self.homepage.setStartBtn(self.calibration)
+        self.homepage.setStartBtn(self.relighting)
         
     def setCalibration(self):
         # Set up both the upload buttons
@@ -74,5 +80,13 @@ class MainWindow (QMainWindow):
         self.pointSelection.geometryChanged.connect(self.handleGeometry)
         self.pointSelection.setStartBtn()
         
+    def setRelighting(self):
+        self.relighting.geometryChanged.connect(self.handleGeometry)
+        self.relighting.setOutputImage()
+        self.relighting.setPlotImage()
+        
+    
     def handleGeometry(self, geometry):
+        print("Enters here")
         self.setGeometry(geometry)
+        print("Geometry: ", self.geometry())
