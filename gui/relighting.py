@@ -116,8 +116,6 @@ class Relighting(QWidget):
         # Retrive points (in the resized space)
         x, y = event.pos().x(), event.pos().y()
         
-        print("From event: ", x, y)
-        
         # Init the pixmap with a black background
         self.pixmapPlot = QPixmap(self.defaultImgSize, self.defaultImgSize)
         self.pixmapPlot.fill(Qt.GlobalColor.black)
