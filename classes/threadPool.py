@@ -1,66 +1,115 @@
 from queue import Queue, Empty
-import threading
-from threading import Thread
+from threading import Thread, Lock
 
 
-class Worker(Thread):
-    _TIMEOUT = 2
-    """ Thread executing tasks from a given tasks queue. Thread is signalable, 
-        to exit
-    """
-    def __init__(self, tasks, th_num):
-        Thread.__init__(self)
-        self.tasks = tasks
-        self.daemon, self.th_num = True, th_num
-        self.done = threading.Event()
-        self.start()
+# class Worker(Thread):
+#     _TIMEOUT = 2
+#     """ Thread executing tasks from a given tasks queue. Thread is signalable, 
+#         to exit
+#     """
+#     def __init__(self, tasks, th_num):
+#         Thread.__init__(self)
+#         self.tasks = tasks
+#         self.daemon, self.th_num = True, th_num
+#         self.done = threading.Event()
+#         self.start()
 
-    def run(self):       
-        while not self.done.is_set():
-            try:
-                func, args, kwargs = self.tasks.get(block=True,
-                                                   timeout=self._TIMEOUT)
-                try:
-                    func(*args, **kwargs)
-                except Exception as e:
-                    print(e)
-                finally:
-                    self.tasks.task_done()
-            except Empty as e:
-                pass
-        return
+#     def run(self):       
+#         while not self.done.is_set():
+#             try:
+#                 func, args, kwargs = self.tasks.get(block=True,
+#                                                    timeout=self._TIMEOUT)
+#                 try:
+#                     func(*args, **kwargs)
+#                 except Exception as e:
+#                     print(e)
+#                 finally:
+#                     self.tasks.task_done()
+#             except Empty as e:
+#                 pass
+#         return
 
-    def signal_exit(self):
-        """ Signal to thread to exit """
-        self.done.set()
+#     def signal_exit(self):
+#         """ Signal to thread to exit """
+#         self.done.set()
+
+# class ThreadPool:
+#     """Pool of threads consuming tasks from a queue"""
+#     def __init__(self, num_threads, tasks=[]):
+#         self.tasks = Queue(num_threads)
+#         self.workers = []
+#         self.done = False
+#         self._init_workers(num_threads)
+#         for task in tasks:
+#             self.tasks.put(task)
+
+#     def _init_workers(self, num_threads):
+#         for i in range(num_threads):
+#             self.workers.append(Worker(self.tasks, i))
+
+#     def add_task(self, func, *args, **kwargs):
+#         """Add a task to the queue"""
+#         self.tasks.put((func, args, kwargs))
+
+#     def _close_all_threads(self):
+#         """ Signal all threads to exit and lose the references to them """
+#         for workr in self.workers:
+#             workr.signal_exit()
+#         self.workers = []
+
+#     def wait_completion(self):
+#         """Wait for completion of all the tasks in the queue"""
+#         self.tasks.join()
+
+#     def __del__(self):
+#         self._close_all_threads()
 
 class ThreadPool:
-    """Pool of threads consuming tasks from a queue"""
-    def __init__(self, num_threads, tasks=[]):
-        self.tasks = Queue(num_threads)
-        self.workers = []
-        self.done = False
-        self._init_workers(num_threads)
-        for task in tasks:
-            self.tasks.put(task)
+    def __init__(self, num_threads):
+        self.num_threads = num_threads
+        self.task_queue = Queue()
+        self.result_queue = Queue()
+        self.threads = []
+        self.lock = Lock()
 
-    def _init_workers(self, num_threads):
-        for i in range(num_threads):
-            self.workers.append(Worker(self.tasks, i))
+        # Create and start worker threads
+        for _ in range(self.num_threads):
+            thread = Thread(target=self._worker)
+            thread.daemon = True
+            thread.start()
+            self.threads.append(thread)
 
-    def add_task(self, func, *args, **kwargs):
-        """Add a task to the queue"""
-        self.tasks.put((func, args, kwargs))
+    def _worker(self):
+        while True:
+            try:
+                # Get a task from the queue
+                task, args, kwargs = self.task_queue.get()
+                # Execute the task with the provided arguments and keyword arguments
+                result = task(*args, **kwargs)
+                with self.lock:
+                    # Add the result to the result queue
+                    self.result_queue.put(result)
+                # Mark the task as done and return the result
+                self.task_queue.task_done()
+            except Empty:
+                break
 
-    def _close_all_threads(self):
-        """ Signal all threads to exit and lose the references to them """
-        for workr in self.workers:
-            workr.signal_exit()
-        self.workers = []
+    def add_task(self, task, *args, **kwargs):
+        # Add a task to the queue
+        self.task_queue.put((task, args, kwargs))
 
     def wait_completion(self):
-        """Wait for completion of all the tasks in the queue"""
-        self.tasks.join()
+        # Wait for all tasks to be completed
+        self.task_queue.join()
+    
+    def get_results(self):
+        results = []
+        while not self.result_queue.empty():
+            results.append(self.result_queue.get())
+        return results
 
-    def __del__(self):
-        self._close_all_threads()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.wait_completion()

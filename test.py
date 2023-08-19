@@ -6,6 +6,8 @@ from datetime import datetime
 from classes.cameraCalibration import CameraCalibration
 from classes.video import Video
 from classes.rtiAlgorithm import RTI
+from classes.threadPool import ThreadPool
+
 
 from constants import *
 from utils import *
@@ -44,7 +46,7 @@ def main():
 
     # Store the first frame of the Static Camera
     _, firstStaticFrame = videoStatic.getCurrentFrame()
-    firstStaticFrame = cv.resize(firstStaticFrame, (1080, 1920))
+    firstStaticFrame = cv.cvtColor(firstStaticFrame, cv.COLOR_BGR2GRAY)
     
     # And try to get the 4 points in the static video
     worldHomography = rti.getWorldHomography(videoStatic)
@@ -55,7 +57,7 @@ def main():
     else:
         print("Homography calculated without errors")
     
-    # print("Starting video synchronisation...")
+    print("Starting video synchronisation...")
     
     # # Create class to synch the videos
     # videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
@@ -70,30 +72,30 @@ def main():
     # # ... and then compute the shift between the videos
     # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
     
-    # frameDifference = -2    # Frame difference between unive (filename) video camera
-    # # frameDifference = -10   # Frame difference between keys (filename) video camera
-    # # frameDifference = -6    # Frame difference between paperclip (filename) video camera
-    # # frameDifference = -9    # Frame difference between book (filename) video camera
+    frameDifference = -2    # Frame difference between unive (filename) video camera
+    # frameDifference = -10   # Frame difference between keys (filename) video camera
+    # frameDifference = -6    # Frame difference between paperclip (filename) video camera
+    # frameDifference = -9    # Frame difference between book (filename) video camera
     
-    # print("Frame difference: ", frameDifference)
+    print("Frame difference: ", frameDifference)
     
-    # if (frameDifference > 0):
-    #     print("Static Video shifted")
-    #     # If the offset is positive, then the first video starts sooner.
-    #     # So move its position in order to start as the second video
-    #     videoStatic.setVideoFrame(abs(frameDifference))
-    #     videoMoving.setVideoFrame()
-    # else:
-    #     print("Moving Video shifted")
-    #     # ... or vice versa
-    #     videoStatic.setVideoFrame()
-    #     videoMoving.setVideoFrame(abs(frameDifference))
+    if (frameDifference > 0):
+        print("Static Video shifted")
+        # If the offset is positive, then the first video starts sooner.
+        # So move its position in order to start as the second video
+        videoStatic.setVideoFrame(abs(frameDifference))
+        videoMoving.setVideoFrame()
+    else:
+        print("Moving Video shifted")
+        # ... or vice versa
+        videoStatic.setVideoFrame()
+        videoMoving.setVideoFrame(abs(frameDifference))
         
     # print("Starting calculation of the light directions in the videos...")
     
-    # # Variable used to store the time calculated after each read on the video, in order to provide synchronisation
-    # timeStaticVideo = 0.
-    # timeMovingVideo = 0.
+    # Variable used to store the time calculated after each read on the video, in order to provide synchronisation
+    timeStaticVideo = 0.
+    timeMovingVideo = 0.
     
     # # Number of frames read
     # nFrames = 0
@@ -104,172 +106,214 @@ def main():
     # # Array with shape (nFrames, 400, 400, 3) where, for each pixel, stores the intensity of it, and the light value X and Y (costant along the frame)
     # lightData = []
     
-    # staticFrames = []
-    # movingFrames = []
+    staticFrames = []
+    movingFrames = []
     
-    # # Get the FPS of both frames
-    # videoStaticFPS = videoStatic.getFPS()
-    # videoMovingFPS = videoMoving.getFPS()
+    # Get the FPS of both frames
+    videoStaticFPS = videoStatic.getFPS()
+    videoMovingFPS = videoMoving.getFPS()
     
-    # while True:
+    while True:
         
-    #     # Get frame from each video
-    #     retStatic, staticFrame = videoStatic.getCurrentFrame()
-    #     retMoving, movingFrame = videoMoving.getCurrentFrame()
+        # Get frame from each video
+        retStatic, staticFrame = videoStatic.getCurrentFrame()
+        retMoving, movingFrame = videoMoving.getCurrentFrame()
         
-    #     # For each iteration, sum the time for each video based on the tick (1 / FPS_video)
-    #     timeStaticVideo += 1. / videoStaticFPS
-    #     timeMovingVideo += 1. / videoMovingFPS
+        # For each iteration, sum the time for each video based on the tick (1 / FPS_video)
+        timeStaticVideo += 1. / videoStaticFPS
+        timeMovingVideo += 1. / videoMovingFPS
         
-    #     # Now depends on which video has lower FPS
-    #     if videoStaticFPS < videoMovingFPS:
-    #         # Video static is behind more than 1 frame, so skip it to recover the loss
-    #         if timeStaticVideo > timeMovingVideo + (1. / videoMovingFPS):
-    #             retStatic, staticFrame = videoStatic.getCurrentFrame()
-    #     else:    
-    #         # Video moving is behind more than 1 frame, so skip it to recover the loss
-    #         if timeMovingVideo > timeStaticVideo + (1. / videoStaticFPS):
-    #             retMoving, movingFrame = videoMoving.getCurrentFrame()
+        # Now depends on which video has lower FPS
+        if videoStaticFPS < videoMovingFPS:
+            # Video static is behind more than 1 frame, so skip it to recover the loss
+            if timeStaticVideo > timeMovingVideo + (1. / videoMovingFPS):
+                retStatic, staticFrame = videoStatic.getCurrentFrame()
+        else:    
+            # Video moving is behind more than 1 frame, so skip it to recover the loss
+            if timeMovingVideo > timeStaticVideo + (1. / videoStaticFPS):
+                retMoving, movingFrame = videoMoving.getCurrentFrame()
         
-    #     checkStaticFrame = (staticFrame is None or np.shape(staticFrame) == () or np.sum(staticFrame) == 0)
-    #     checkMovingFrame = (movingFrame is None or np.shape(movingFrame) == () or np.sum(movingFrame) == 0)
+        checkStaticFrame = (staticFrame is None or np.shape(staticFrame) == () or np.sum(staticFrame) == 0)
+        checkMovingFrame = (movingFrame is None or np.shape(movingFrame) == () or np.sum(movingFrame) == 0)
             
-    #     if retStatic != True or retMoving != True or checkStaticFrame or checkMovingFrame:
-    #         break
-            
-    #     staticFrame = cv.resize(staticFrame, (1080, 1920))
+        if retStatic != True or retMoving != True or checkStaticFrame or checkMovingFrame:
+            break
+                    
+        # Convert frames to grayscale
+        staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
+        movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
         
-    #     staticFrames.append(staticFrame)
-    #     movingFrames.append(movingFrame)
-        
-    #     if cv.waitKey(20) == ord('q'):
-    #         break
+        staticFrames.append(staticFrame)
+        movingFrames.append(movingFrame)
     
-    # print(f"Images acquired. {len(staticFrames)}")
+    print(f"Images acquired. {len(staticFrames)}")
     
-    # # Release videos and destroy windows
-    # videoStatic.releaseVideo()
-    # videoMoving.releaseVideo()
-    # cv.destroyAllWindows()
+    # Release videos and destroy windows
+    videoStatic.releaseVideo()
+    videoMoving.releaseVideo()
+    cv.destroyAllWindows()
     
     # np.save('frames/static/frames', staticFrames)
     # np.save('frames/moving/frames', movingFrames)
+    # staticFrames = np.load('frames/static/frames.npy')
+    # movingFrames = np.load('frames/moving/frames.npy')
     
-    videoStatic.releaseVideo()
-    
-    staticFrames = np.load('frames/static/frames.npy')
-    movingFrames = np.load('frames/moving/frames.npy')
+    # Create thread pool, with 4 threads
+    pool = ThreadPool(4)
     
     # Get keypoints and descriptor for first frame
-    featuresFirstStaticFrame = extractFeaturesFromFrame(firstStaticFrame)
-
-    # staticFramesIdxs = [i for i in range(len(staticFrames))]
-    # movingFrameIdxs = [i for i in range(len(movingFrames))]
-
+    featuresFirstStaticFrame = extractFeaturesFromFrame(firstStaticFrame, 0)
+    
     start = time.time()
     
-    featuresStaticFrames = []
-    executor = ThreadPoolExecutor()
-    for result in executor.map(extractFeaturesFromFrame, staticFrames):
-        featuresStaticFrames.append(result)
+    for i in range(len(staticFrames)):
+        frame = staticFrames[i]
+        # For each static frame, calculate its features
+        pool.add_task(extractFeaturesFromFrame, frame, i)
+        
+    # Wait completion of the queue
+    pool.wait_completion()
+    
+    # Get the results
+    featuresStaticFrames = pool.get_results()
         
     end = time.time()
     
-    print(f"Time of execution to get features from static frames: {((end - start) * 10**3)}ms")
+    print(f"Time of execution to get features from static frames: {int(end - start)} seconds")
+    print(f"Lenght of result array: {len(featuresStaticFrames)}")
     
     start = time.time()
     
-    featuresMovingFrames = []
-    for result in executor.map(extractFeaturesFromFrame, movingFrames):
-        featuresMovingFrames.append(result)
+    for i in range(len(movingFrames)):
+        frame = movingFrames[i]
+        # For each static frame, calculate its features
+        pool.add_task(extractFeaturesFromFrame, frame, i)
+        
+    # Wait completion of the queue
+    pool.wait_completion()
+    
+    # Get the results
+    featuresMovingFrames = pool.get_results()
         
     end = time.time()
     
-    print(f"Time of execution to get feature from moving frames: {((end - start) * 10**3)}ms")
+    print(f"Time of execution to get features from moving frames: {int(end - start)} seconds")
+    print(f"Lenght of result array: {len(featuresMovingFrames)}")
     
-    start = time.time()
+    # Now sort features based on index
+    featuresStaticFrames = sorted(featuresStaticFrames, key = lambda x: x[0])
+    featuresMovingFrames = sorted(featuresMovingFrames, key = lambda x: x[0])
     
+    # Replicate first frame features to then match it to all the other frames in the static camera 
     featuresFirstFrame = [featuresFirstStaticFrame] * len(featuresStaticFrames)
-    matchingStaticStatic = []
-    for result in executor.map(matchFeatures, featuresFirstFrame, featuresStaticFrames):
-        matchingStaticStatic.append(result)
-        
-    end = time.time()
     
-    print(f"Time of execution to extract good matches between first static frame and current static frame: {((end - start) * 10**3)}ms")
-    
-    start = time.time()
-    
-    matchingStaticMoving = []
-    for result in executor.map(matchFeatures, featuresStaticFrames, featuresMovingFrames):
-        matchingStaticMoving.append(result)
-        
-    end = time.time()
-    
-    print(f"Time of execution to extract good matches between current static and moving frame: {((end - start) * 10**3)}ms")
-    print(f"Matches extracted between static and static: {len(matchingStaticStatic)}, and static and moving: {len(matchingStaticMoving)}")
+    # Create a list of features that will be matched using feature matching technique
+    featuresStaticStatic = list(zip(featuresFirstFrame, featuresStaticFrames))
+    featuresStaticMoving = list(zip(featuresStaticFrames, featuresMovingFrames))
         
     start = time.time()
     
-    lightFramePair = []
-    submittedTasks = []
+    for i in range(len(featuresStaticStatic)):
+        feature = featuresStaticStatic[i]
+        # For each static frame, calculate its features
+        pool.add_task(matchFeatures, feature, ((500, 1700), (1400, 2600)), ((500, 1700), (1400, 2600)))
+        
+    # Wait completion of the queue
+    pool.wait_completion()
     
-    for idx in range(len(staticFrames)):
+    # Get the results
+    matchingStaticStatic = pool.get_results()
+    
+    # Repeat the process
+    for i in range(len(featuresStaticMoving)):
+        feature = featuresStaticMoving[i]
+        # For each static frame, calculate its features
+        pool.add_task(matchFeatures, feature, ((500, 1700), (1400, 2600)), ((450, 1150), (200, 900)))
+        
+    # Wait completion of the queue
+    pool.wait_completion()
+    
+    # Get the results
+    matchingStaticMoving = pool.get_results()
+    
+    end = time.time()
+    
+    print(f"Time of execution to extract good matches: {int(end - start)} seconds")
+    
+    # Now sort matching based on index
+    matchingStaticStatic = sorted(matchingStaticStatic, key = lambda x: x[0])
+    matchingStaticMoving = sorted(matchingStaticMoving, key = lambda x: x[0])
+    
+    start = time.time()
+    
+    for i in range(len(matchingStaticStatic)):
         # Get frames
-        frame1 = staticFrames[idx]
-        frame2 = movingFrames[idx]
-        # Get static matching
-        _, _, homographyStaticToStatic = matchingStaticStatic[idx]
-        _, ptsMovingCam, homographyStaticToMoving = matchingStaticMoving[idx]
+        staticFrame = staticFrames[i]
+        movingFrame = movingFrames[i]
+        # Get homographies and dst pts
+        _, _, _, homographyStatic = matchingStaticStatic[i]
+        _, _, dstPts, homographyMoving = matchingStaticMoving[i]
         
-        future = executor.submit(getLight, frame1, frame2, homographyStaticToStatic, ptsMovingCam, homographyStaticToMoving, worldHomography, kMoving)
-        submittedTasks.append(future)
+        # Calculate light given parameters
+        pool.add_task(getLight, staticFrame, movingFrame, homographyStatic, dstPts, homographyMoving, worldHomography, kMoving)
     
-    for task in submittedTasks:
-        res = task.result()
-        lightFramePair.append(res)
-        
+    # Wait completion of the queue
+    pool.wait_completion()
+    
+    # Get the results
+    lightFramePair = pool.get_results()
     
     end = time.time()
     
-    print(f"Time of execution to get light from all frames: {((end - start) * 10**3)}ms")
+    print(f"Time of execution to get light from all frames: {int(end - start)} seconds")
     
-    validPairs = [pair for pair in lightFramePair if all(value is not None for value in pair)]
+    # validPairs = [pair for pair in lightFramePair if all(value is not None for value in pair)]
     
-    print(f"Valid pairs: {len(validPairs)}")
+    print(f"Valid pairs: {len(lightFramePair)}")
     
-    for frame, light in validPairs:
-        # Show the light plot of the calculated light vector
-        cirlePlotPnP = rti.showCircleLightDirection(light)
+    for worldFrame, movingFrame in lightFramePair:
         
         # Plot images
-        cv.imshow('Light plot PnP', cirlePlotPnP)
-        cv.imshow('World frame', frame)
+        cv.imshow('Moving warped frame', movingFrame)
+        cv.imshow('World frame', worldFrame)
                     
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
     
+    # for frame, light in lightFramePair:
+    #     # Show the light plot of the calculated light vector
+    #     cirlePlotPnP = rti.showCircleLightDirection(light)
+        
+    #     # Plot images
+    #     cv.imshow('Light plot PnP', cirlePlotPnP)
+    #     cv.imshow('World frame', frame)
+                    
+    #     # Press Q on the keyboard to exit.
+    #     if (cv.waitKey(25) & 0xFF == ord('q')):
+    #         break
     
-def extractFeaturesFromFrame(frame):
-        sift = cv.SIFT_create(nfeatures=1000)
+    
+def extractFeaturesFromFrame(frame, idx):
+        sift = cv.SIFT_create(nfeatures=3000)
         keypoints, descriptors = sift.detectAndCompute(frame, None)
-        return keypoints, descriptors
+        return idx, keypoints, descriptors
     
-def matchFeatures(features1, features2):
+def matchFeatures(features, cutFrame1, cutFrame2):
         try:
             # Get both features
-            # features1, features2 = features
+            features1, features2 = features
             
             # Extract keypoints and descriptors of both features
-            keypoints1, descriptors1 = features1
-            keypoints2, descriptors2 = features2
+            idx1, keypoints1, descriptors1 = features1
+            idx2, keypoints2, descriptors2 = features2
             
             flann = cv.FlannBasedMatcher_create()
         
             matches = flann.knnMatch(descriptors1, descriptors2, k=2)
         except:
-            return None, None, None
+            print("Error in match feature")
+            return idx2, None, None, None
             
         src = []
         dst = []
@@ -280,8 +324,26 @@ def matchFeatures(features1, features2):
                 src_pt = keypoints1[m1.queryIdx].pt
                 dst_pt = keypoints2[m1.trainIdx].pt
                 
-                src.append(src_pt)
-                dst.append(dst_pt)
+                if cutFrame1 is not None and cutFrame2 is not None:
+                    
+                    # Get cut points for src
+                    srcCutX = cutFrame1[0]
+                    srcCutY = cutFrame1[1]
+                    
+                    # Get cut points for dst
+                    dstCutX = cutFrame2[0]
+                    dstCutY = cutFrame2[1]
+                    
+                    isInsideSrcCut = (srcCutX[0] <= src_pt[0] <= srcCutX[1]) and (srcCutY[0] <= src_pt[1] <= srcCutY[1])
+                    isInsideDstCut = (dstCutX[0] <= dst_pt[0] <= dstCutX[1]) and (dstCutY[0] <= dst_pt[1] <= dstCutY[1])
+                    
+                    if isInsideSrcCut == True and isInsideDstCut == True:
+                        src.append(src_pt)
+                        dst.append(dst_pt)
+                                
+                else:            
+                    src.append(src_pt)
+                    dst.append(dst_pt)
                     
         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
         if len(src) >= MIN_MATCH_COUNT:
@@ -293,9 +355,10 @@ def matchFeatures(features1, features2):
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
             
-            return src, dst, homography
+            return idx2, src, dst, homography
         else:
-            return None, None, None
+            print("Not enough pts")
+            return idx2, None, None, None
     
 def getLight(staticFrame, movingFrame, homographyStaticToStatic, ptsMovingCam, homographyStaticToMoving, worldHomography, kMoving):  
         
@@ -330,53 +393,56 @@ def getLight(staticFrame, movingFrame, homographyStaticToStatic, ptsMovingCam, h
             points3d[:, 2] = 0
             
             # Now get world frame using static camera and homographies to move into the world reference system
-            worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
+            # worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
+            worldFrame = cv.warpPerspective(staticFrame, worldHomography, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
             
             # ... and do the same for moving camera, in order to get a similarity between frames
             warpedMoving = cv.warpPerspective(movingFrame,  hWorld2Moving, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
+        
+        return worldFrame, warpedMoving
             
-            # Now, let's try to cross-correlate the two warped images.
-            # If the correlation is high, then the images are similar, so we can compute the light vector
-            # Otherwise, skip the frame
-            imgCorr = cv.matchTemplate(worldFrame, warpedMoving, cv.TM_CCORR_NORMED)
+        #     # Now, let's try to cross-correlate the two warped images.
+        #     # If the correlation is high, then the images are similar, so we can compute the light vector
+        #     # Otherwise, skip the frame
+        #     imgCorr = cv.matchTemplate(worldFrame, warpedMoving, cv.TM_CCORR_NORMED)
                             
-            # Set as lower threshold 0.6 to have high confidentiality
-            if imgCorr[0][0] >= 0.96:
-                # Calculate the light vector using PnP
+        #     # Set as lower threshold 0.6 to have high confidentiality
+        #     if imgCorr[0][0] >= 0.96:
+        #         # Calculate the light vector using PnP
                 
-                # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
-                src = points3d
-                dst = np.squeeze(points2d)
+        #         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
+        #         src = points3d
+        #         dst = np.squeeze(points2d)
                 
-                if len(src) > MIN_MATCH_COUNT:
+        #         if len(src) > MIN_MATCH_COUNT:
                 
-                    ret, rvec, tvec = cv.solvePnP(src, dst, kMoving, None, flags=cv.SOLVEPNP_IPPE)
+        #             ret, rvec, tvec = cv.solvePnP(src, dst, kMoving, None, flags=cv.SOLVEPNP_IPPE)
                     
-                    if not ret:
-                        # if solvePnP fails, then return an empty array, corresponding to no light
-                        lightVector = worldFrame = None
+        #             if not ret:
+        #                 # if solvePnP fails, then return an empty array, corresponding to no light
+        #                 lightVector = worldFrame = None
                     
-                    # Get rotation
-                    R, _ = cv.Rodrigues(rvec)
+        #             # Get rotation
+        #             R, _ = cv.Rodrigues(rvec)
                     
-                    # then compute light vector
-                    lightVector = -R.T @ tvec
-                    lightVector = lightVector / np.linalg.norm(lightVector)      
+        #             # then compute light vector
+        #             lightVector = -R.T @ tvec
+        #             lightVector = lightVector / np.linalg.norm(lightVector)      
                     
-                    # If any of the position is Nan, then skip it
-                    if np.isnan(lightVector).any():
-                        lightVector = worldFrame = None
+        #             # If any of the position is Nan, then skip it
+        #             if np.isnan(lightVector).any():
+        #                 lightVector = worldFrame = None
                     
-                else:
-                    lightVector = worldFrame = None
-            else:
-                lightVector = worldFrame = None
+        #         else:
+        #             lightVector = worldFrame = None
+        #     else:
+        #         lightVector = worldFrame = None
             
-        else:
-            # Otherwise, if one of the two homographies is not defined, then the light vector is None
-            lightVector = worldFrame = None
+        # else:
+        #     # Otherwise, if one of the two homographies is not defined, then the light vector is None
+        #     lightVector = worldFrame = None
     
-        return (worldFrame, lightVector)
+        # return (worldFrame, lightVector)
         
 if __name__ == "__main__":
     main()
