@@ -98,10 +98,10 @@ class PCAClass:
         output = np.reshape(M_proj, (self.data.shape[1], self.data.shape[2], self.pcaNumber))
         
         # Save the reshaped projected pixels
-        np.save(self.outputDir + "proj_pixels_pca_%02d.npy"%(self.pcaNumber), output)
+        np.save(self.outputDir + "proj_pixels_pca.npy", output)
         
         # Build the PCA normalised filename as training for the neural network
-        filename = self.outputDir + "train_data_pca_%02d.h5"%(self.pcaNumber)
+        filename = self.outputDir + "train_data_pca.h5"
         
         # Create a matrix with shape of the matrix M projected (containing the 8 principal components)
         x = np.zeros((M_proj.shape[0], M_proj.shape[1]+2), dtype=np.float32)

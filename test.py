@@ -5,14 +5,14 @@ from datetime import datetime
 # Import classes
 from classes.cameraCalibration import CameraCalibration
 from classes.video import Video
-from classes.rtiAlgorithm import RTI
+from classes.videoAnalysis import VideoAnalysis
 from classes.threadPool import ThreadPool
+from classes.pca import PCAClass
+from classes.neuralNetwork import NeuralNetwork
 
 
 from constants import *
 from utils import *
-
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def main():
     
@@ -38,7 +38,7 @@ def main():
     videoMoving = Video(MOVING_VIDEO_FILE_PATH)
     
     # Initialise RTI class
-    rti = RTI()
+    videoAnalysis = VideoAnalysis()
     
     # Retrieve K for both cameras
     kStatic = calibrationStatic.getIntrinsicMatrix()
@@ -46,10 +46,11 @@ def main():
 
     # Store the first frame of the Static Camera
     _, firstStaticFrame = videoStatic.getCurrentFrame()
+    firstStaticFrame = cv.resize(firstStaticFrame, (1080, 1920))
     firstStaticFrame = cv.cvtColor(firstStaticFrame, cv.COLOR_BGR2GRAY)
     
     # And try to get the 4 points in the static video
-    worldHomography = rti.getWorldHomography(videoStatic)
+    worldHomography = videoAnalysis.getWorldHomography(videoStatic)
 
     if len(worldHomography) == 0:
         print("Error when computing homography to get world reference system. ")
@@ -97,14 +98,14 @@ def main():
     timeStaticVideo = 0.
     timeMovingVideo = 0.
     
-    # # Number of frames read
-    # nFrames = 0
+    # Number of frames read
+    nFrames = 0
     
-    # # Array with shape (400, 400, 2) which contains the sum of the U and V value of each pixel along the video
-    # sumUV = np.zeros((400, 400, 2))
+    # Array with shape (400, 400, 2) which contains the sum of the U and V value of each pixel along the video
+    sumUV = np.zeros((400, 400, 2))
     
-    # # Array with shape (nFrames, 400, 400, 3) where, for each pixel, stores the intensity of it, and the light value X and Y (costant along the frame)
-    # lightData = []
+    # Array with shape (nFrames, 400, 400, 3) where, for each pixel, stores the intensity of it, and the light value X and Y (costant along the frame)
+    lightData = []
     
     staticFrames = []
     movingFrames = []
@@ -139,6 +140,8 @@ def main():
         if retStatic != True or retMoving != True or checkStaticFrame or checkMovingFrame:
             break
                     
+        staticFrame = cv.resize(staticFrame, (1080, 1920))
+        
         # Convert frames to grayscale
         staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
         movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
@@ -153,23 +156,18 @@ def main():
     videoMoving.releaseVideo()
     cv.destroyAllWindows()
     
-    # np.save('frames/static/frames', staticFrames)
-    # np.save('frames/moving/frames', movingFrames)
-    # staticFrames = np.load('frames/static/frames.npy')
-    # movingFrames = np.load('frames/moving/frames.npy')
-    
     # Create thread pool, with 4 threads
     pool = ThreadPool(4)
     
     # Get keypoints and descriptor for first frame
-    featuresFirstStaticFrame = extractFeaturesFromFrame(firstStaticFrame, 0)
+    featuresFirstStaticFrame = videoAnalysis.extractFeaturesFromFrame(firstStaticFrame, 0)
     
     start = time.time()
     
     for i in range(len(staticFrames)):
         frame = staticFrames[i]
         # For each static frame, calculate its features
-        pool.add_task(extractFeaturesFromFrame, frame, i)
+        pool.add_task(videoAnalysis.extractFeaturesFromFrame, frame, i)
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -180,14 +178,13 @@ def main():
     end = time.time()
     
     print(f"Time of execution to get features from static frames: {int(end - start)} seconds")
-    print(f"Lenght of result array: {len(featuresStaticFrames)}")
     
     start = time.time()
     
     for i in range(len(movingFrames)):
         frame = movingFrames[i]
         # For each static frame, calculate its features
-        pool.add_task(extractFeaturesFromFrame, frame, i)
+        pool.add_task(videoAnalysis.extractFeaturesFromFrame, frame, i)
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -198,7 +195,6 @@ def main():
     end = time.time()
     
     print(f"Time of execution to get features from moving frames: {int(end - start)} seconds")
-    print(f"Lenght of result array: {len(featuresMovingFrames)}")
     
     # Now sort features based on index
     featuresStaticFrames = sorted(featuresStaticFrames, key = lambda x: x[0])
@@ -208,15 +204,17 @@ def main():
     featuresFirstFrame = [featuresFirstStaticFrame] * len(featuresStaticFrames)
     
     # Create a list of features that will be matched using feature matching technique
-    featuresStaticStatic = list(zip(featuresFirstFrame, featuresStaticFrames))
+    featuresStaticStatic = list(zip(featuresStaticFrames, featuresFirstFrame))
     featuresStaticMoving = list(zip(featuresStaticFrames, featuresMovingFrames))
         
     start = time.time()
     
+    print("Extracting matches between first static frame and other static frames...")
+    
     for i in range(len(featuresStaticStatic)):
         feature = featuresStaticStatic[i]
         # For each static frame, calculate its features
-        pool.add_task(matchFeatures, feature, ((500, 1700), (1400, 2600)), ((500, 1700), (1400, 2600)))
+        pool.add_task(videoAnalysis.matchFeatures, feature)
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -224,11 +222,13 @@ def main():
     # Get the results
     matchingStaticStatic = pool.get_results()
     
+    print("Extracting matches between static frames and moving frames...")
+    
     # Repeat the process
     for i in range(len(featuresStaticMoving)):
         feature = featuresStaticMoving[i]
         # For each static frame, calculate its features
-        pool.add_task(matchFeatures, feature, ((500, 1700), (1400, 2600)), ((450, 1150), (200, 900)))
+        pool.add_task(videoAnalysis.matchFeatures, feature)
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -255,7 +255,7 @@ def main():
         _, _, dstPts, homographyMoving = matchingStaticMoving[i]
         
         # Calculate light given parameters
-        pool.add_task(getLight, staticFrame, movingFrame, homographyStatic, dstPts, homographyMoving, worldHomography, kMoving)
+        pool.add_task(videoAnalysis.getLight, staticFrame, movingFrame, homographyStatic, dstPts, homographyMoving, worldHomography, kMoving)
     
     # Wait completion of the queue
     pool.wait_completion()
@@ -267,183 +267,106 @@ def main():
     
     print(f"Time of execution to get light from all frames: {int(end - start)} seconds")
     
-    # validPairs = [pair for pair in lightFramePair if all(value is not None for value in pair)]
+    validPairs = [pair for pair in lightFramePair if all(value is not None for value in pair)]
     
-    print(f"Valid pairs: {len(lightFramePair)}")
+    for worldFrame, light in validPairs:
+        
+        # Show the light plot of the calculated light vector
+        cirlePlotPnP = getLightDirectionPlot(light, DEFAULT_SQUARE_SIZE)
+        
+        # First, convert the frame from GRAY to BGR
+        # Then from BGR to YUV, to extract the intensity and calculate U and V mean
+        worldFrameBGR = cv.cvtColor(worldFrame, cv.COLOR_GRAY2BGR)
+        worldFrameYUV = cv.cvtColor(worldFrameBGR, cv.COLOR_BGR2YUV)
+        
+        # Get Y, U, V
+        Y, U, V = cv.split(worldFrameYUV)
+        
+        # Get the light position X and Y (Z can be removed now)            
+        light = np.tile(light[:2].flatten(), (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 1))
     
-    for worldFrame, movingFrame in lightFramePair:
+        # Now, store an array containing the intensity of the pixels and the respective light
+        data = np.dstack((Y, light))
+        
+        # Now get the current UV with shape (400, 400, 2), and sum their values inside the sumUV matrix with shape (400, 400, 2)
+        sumUV = sumUV + np.dstack((U, V))
+        
+        # Append the data
+        lightData.append(data)
+        
+        # Increament number of frames acquired
+        nFrames += 1
         
         # Plot images
-        cv.imshow('Moving warped frame', movingFrame)
+        cv.imshow('Light plot PnP', cirlePlotPnP)
         cv.imshow('World frame', worldFrame)
                     
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
     
-    # for frame, light in lightFramePair:
-    #     # Show the light plot of the calculated light vector
-    #     cirlePlotPnP = rti.showCircleLightDirection(light)
-        
-    #     # Plot images
-    #     cv.imshow('Light plot PnP', cirlePlotPnP)
-    #     cv.imshow('World frame', frame)
-                    
-    #     # Press Q on the keyboard to exit.
-    #     if (cv.waitKey(25) & 0xFF == ord('q')):
-    #         break
+    # Calculate UVMean
+    meanUV = sumUV / nFrames
     
+    # Convert from list 2 array
+    lightData = np.stack(lightData)
     
-def extractFeaturesFromFrame(frame, idx):
-        sift = cv.SIFT_create(nfeatures=3000)
-        keypoints, descriptors = sift.detectAndCompute(frame, None)
-        return idx, keypoints, descriptors
+    # Now, store this values inside a file    
+    now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
     
-def matchFeatures(features, cutFrame1, cutFrame2):
-        try:
-            # Get both features
-            features1, features2 = features
-            
-            # Extract keypoints and descriptors of both features
-            idx1, keypoints1, descriptors1 = features1
-            idx2, keypoints2, descriptors2 = features2
-            
-            flann = cv.FlannBasedMatcher_create()
-        
-            matches = flann.knnMatch(descriptors1, descriptors2, k=2)
-        except:
-            print("Error in match feature")
-            return idx2, None, None, None
-            
-        src = []
-        dst = []
-        
-        for m1, m2 in matches:
-            if m1.distance < 0.7 * m2.distance:
-                
-                src_pt = keypoints1[m1.queryIdx].pt
-                dst_pt = keypoints2[m1.trainIdx].pt
-                
-                if cutFrame1 is not None and cutFrame2 is not None:
-                    
-                    # Get cut points for src
-                    srcCutX = cutFrame1[0]
-                    srcCutY = cutFrame1[1]
-                    
-                    # Get cut points for dst
-                    dstCutX = cutFrame2[0]
-                    dstCutY = cutFrame2[1]
-                    
-                    isInsideSrcCut = (srcCutX[0] <= src_pt[0] <= srcCutX[1]) and (srcCutY[0] <= src_pt[1] <= srcCutY[1])
-                    isInsideDstCut = (dstCutX[0] <= dst_pt[0] <= dstCutX[1]) and (dstCutY[0] <= dst_pt[1] <= dstCutY[1])
-                    
-                    if isInsideSrcCut == True and isInsideDstCut == True:
-                        src.append(src_pt)
-                        dst.append(dst_pt)
-                                
-                else:            
-                    src.append(src_pt)
-                    dst.append(dst_pt)
-                    
-        # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
-        if len(src) >= MIN_MATCH_COUNT:
-            
-            # Get source and destination points found inside the good matches to build the homography between the two frames
-            src = np.float32(src).reshape(-1, 1, 2)
-            dst = np.float32(dst).reshape(-1, 1, 2)
-            
-            # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
-            homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
-            
-            return idx2, src, dst, homography
-        else:
-            print("Not enough pts")
-            return idx2, None, None, None
+    # First get the base dir
+    BASE_DIR = "relights/relight_%s/"%now_string
     
-def getLight(staticFrame, movingFrame, homographyStaticToStatic, ptsMovingCam, homographyStaticToMoving, worldHomography, kMoving):  
-        
-        if homographyStaticToStatic is not None and homographyStaticToMoving is not None:
-            
-            # Homography mapping points from world reference system to moving camera ref. system
-            hWorld2Moving = homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(worldHomography)
-            
-            # Homography mapping points from moving camera ref. system to world reference system 
-            hMoving2World = worldHomography @ homographyStaticToStatic @  np.linalg.inv(homographyStaticToMoving)
-            
-            # Option 1: Use a meshgrid to shift points from one ref. system to world ref. system
-            # # Create a grid in the moving camera ref. system
-            # lx, ly = np.meshgrid(np.linspace(450., 1150., 11), np.linspace(200., 900., 11))   
-            # # And plot the points             
-            # points2d = np.vstack((lx.flatten(), ly.flatten())).T
-            
-            # Option 2: Use the features detected in the cam. ref. system and shift points to world ref. system
-            points2d = ptsMovingCam
-        
-            # Add 1 to the source points
-            points3d = np.hstack([np.squeeze(points2d), np.ones([points2d.shape[0], 1], dtype=points2d.dtype)])
-            
-            # Source points inside world reference system
-            points3d = hMoving2World @ points3d.T 
-            
-            points3d /= points3d[2, :]
-            
-            points3d = points3d.T
-            
-            # Set last postion to 0
-            points3d[:, 2] = 0
-            
-            # Now get world frame using static camera and homographies to move into the world reference system
-            # worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
-            worldFrame = cv.warpPerspective(staticFrame, worldHomography, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
-            
-            # ... and do the same for moving camera, in order to get a similarity between frames
-            warpedMoving = cv.warpPerspective(movingFrame,  hWorld2Moving, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
-        
-        return worldFrame, warpedMoving
-            
-        #     # Now, let's try to cross-correlate the two warped images.
-        #     # If the correlation is high, then the images are similar, so we can compute the light vector
-        #     # Otherwise, skip the frame
-        #     imgCorr = cv.matchTemplate(worldFrame, warpedMoving, cv.TM_CCORR_NORMED)
-                            
-        #     # Set as lower threshold 0.6 to have high confidentiality
-        #     if imgCorr[0][0] >= 0.96:
-        #         # Calculate the light vector using PnP
-                
-        #         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
-        #         src = points3d
-        #         dst = np.squeeze(points2d)
-                
-        #         if len(src) > MIN_MATCH_COUNT:
-                
-        #             ret, rvec, tvec = cv.solvePnP(src, dst, kMoving, None, flags=cv.SOLVEPNP_IPPE)
-                    
-        #             if not ret:
-        #                 # if solvePnP fails, then return an empty array, corresponding to no light
-        #                 lightVector = worldFrame = None
-                    
-        #             # Get rotation
-        #             R, _ = cv.Rodrigues(rvec)
-                    
-        #             # then compute light vector
-        #             lightVector = -R.T @ tvec
-        #             lightVector = lightVector / np.linalg.norm(lightVector)      
-                    
-        #             # If any of the position is Nan, then skip it
-        #             if np.isnan(lightVector).any():
-        #                 lightVector = worldFrame = None
-                    
-        #         else:
-        #             lightVector = worldFrame = None
-        #     else:
-        #         lightVector = worldFrame = None
-            
-        # else:
-        #     # Otherwise, if one of the two homographies is not defined, then the light vector is None
-        #     lightVector = worldFrame = None
+    try:
+        # Creating the base dir
+        os.mkdir(BASE_DIR)
+    except:
+        print("Error creating the new folder. ")
+        # Not possible to create the dir, close the app
+        exit(-1)
     
-        # return (worldFrame, lightVector)
+    # Set the name of the file containing the inital dataset for training
+    fileName = BASE_DIR + "data.h5"
+    
+    # Then create the train dataset
+    storeTrainDataset(fileName, lightData, meanUV)
+    
+def testNNWithThreads():
+    
+    # First get the base dir
+    BASE_DIR = "relights/relight_23_08_20_14_49/"    
+    # Set the name of the file containing the inital dataset for training
+    fileName = BASE_DIR + "data.h5"
+    
+    pca = PCAClass(BASE_DIR, fileName, 8)
+
+    print("Reading dataset...")
+    pca.readDataset()
+    print("Reading dataset: DONE")
+
+    print("Applying PCA...")
+    pca.applyPCA()
+    print("Applying PCA: DONE")
+
+    nn = NeuralNetwork(BASE_DIR, 8)
+
+    print("Extracting dataset...")
+    nn.extractDatasets()
+    print("Extracting dataset: DONE")
+
+    print("Shufflings dataset...")
+    nn.shuffleDataset()
+    print("Shuffling dataset: DONE")
+
+    print("Executing NN training...")
+    nn.executeTraining()
+    print("Executing NN trainin: DONE")
+    
+    print("Showing results")    
+    nn.showNNResults()    
+
         
 if __name__ == "__main__":
-    main()
+    # main()
+    testNNWithThreads()
     

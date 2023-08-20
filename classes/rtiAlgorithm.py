@@ -100,6 +100,7 @@ class RTI:
 
         # ... and get the first frame
         _, frame = video.getCurrentFrame()
+        frame = cv.resize(frame, (1080, 1920))
 
         # Array used to store points, to then use them to calculate the homography
         points = []
