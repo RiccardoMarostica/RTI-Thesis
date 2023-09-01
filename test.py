@@ -1,5 +1,6 @@
 # Import default modules
-import os, h5py, cv2 as cv, numpy as np, time
+import cv2 as cv
+import os, h5py, numpy as np, time
 from datetime import datetime
 
 # Import classes
@@ -142,9 +143,9 @@ def main():
                     
         staticFrame = cv.resize(staticFrame, (1080, 1920))
         
-        # Convert frames to grayscale
-        staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
-        movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
+        # # Convert frames to grayscale
+        # staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
+        # movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
         
         staticFrames.append(staticFrame)
         movingFrames.append(movingFrame)
@@ -165,7 +166,7 @@ def main():
     start = time.time()
     
     for i in range(len(staticFrames)):
-        frame = staticFrames[i]
+        frame = cv.cvtColor(staticFrames[i], cv.COLOR_BGR2GRAY)
         # For each static frame, calculate its features
         pool.add_task(videoAnalysis.extractFeaturesFromFrame, frame, i)
         
@@ -182,7 +183,7 @@ def main():
     start = time.time()
     
     for i in range(len(movingFrames)):
-        frame = movingFrames[i]
+        frame = cv.cvtColor(movingFrames[i], cv.COLOR_BGR2GRAY)
         # For each static frame, calculate its features
         pool.add_task(videoAnalysis.extractFeaturesFromFrame, frame, i)
         
@@ -269,6 +270,8 @@ def main():
     
     validPairs = [pair for pair in lightFramePair if all(value is not None for value in pair)]
     
+    print("Valid pairs: ", len(validPairs))
+    
     for worldFrame, light in validPairs:
         
         # Show the light plot of the calculated light vector
@@ -276,8 +279,8 @@ def main():
         
         # First, convert the frame from GRAY to BGR
         # Then from BGR to YUV, to extract the intensity and calculate U and V mean
-        worldFrameBGR = cv.cvtColor(worldFrame, cv.COLOR_GRAY2BGR)
-        worldFrameYUV = cv.cvtColor(worldFrameBGR, cv.COLOR_BGR2YUV)
+        # worldFrameBGR = cv.cvtColor(worldFrame, cv.COLOR_GRAY2BGR)
+        worldFrameYUV = cv.cvtColor(worldFrame, cv.COLOR_BGR2YUV)
         
         # Get Y, U, V
         Y, U, V = cv.split(worldFrameYUV)
@@ -367,6 +370,6 @@ def testNNWithThreads():
 
         
 if __name__ == "__main__":
-    # main()
-    testNNWithThreads()
+    main()
+    # testNNWithThreads()
     

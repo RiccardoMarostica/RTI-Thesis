@@ -121,7 +121,7 @@ class RTI:
 
             if len(points) == 4:
 
-                # Set the destination points for the real world.
+                # Set destination points for the real world.
                 # In this case we are setting to project the image into a square
                 destinationPoints = np.array([
                     [0, 0],
@@ -130,10 +130,10 @@ class RTI:
                     [0, DEFAULT_SQUARE_SIZE]
                 ])
 
-                # Convert the points into integer value
+                # Convert the points of the image into integer value
                 points = np.array(points).astype(np.int32)
 
-                # Now we compute the Homography between the World system and the Static Camera
+                # Homography from the World system and the Static Camera
                 homograhy, _ = cv.findHomography(points, destinationPoints)
 
                 # Destroy the window used to retrieve the points
