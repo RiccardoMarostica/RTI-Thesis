@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Homepage</class>
- <widget class="QWidget" name="Homepage">
+ <class>Relighting</class>
+ <widget class="QWidget" name="Relighting">
   <property name="windowModality">
    <enum>Qt::NonModal</enum>
   </property>

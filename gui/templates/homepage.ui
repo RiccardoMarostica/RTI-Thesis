@@ -113,7 +113,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="moreInfoBtn">
+      <widget class="QPushButton" name="historyBtn">
        <property name="minimumSize">
         <size>
          <width>0</width>
@@ -127,7 +127,7 @@
         </font>
        </property>
        <property name="text">
-        <string>About</string>
+        <string>Relighting History</string>
        </property>
       </widget>
      </item>
