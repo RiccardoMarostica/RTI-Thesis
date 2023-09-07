@@ -8,5 +8,5 @@ gui/__pycache__
 *_example/
 /examples
 calibration-*/
-relights/
+relight-*/
 frames/

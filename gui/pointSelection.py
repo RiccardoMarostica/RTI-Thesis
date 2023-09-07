@@ -356,12 +356,7 @@ class PointSelection(QWidget):
             
         for worldFrame, light in validPairs:
             
-            # Show the light plot of the calculated light vector
-            cirlePlotPnP = getLightDirectionPlot(light, self.params.getOutputImageSize())
-            
-            # First, convert the frame from GRAY to BGR
-            # Then from BGR to YUV, to extract the intensity and calculate U and V mean
-            # worldFrameBGR = cv.cvtColor(worldFrame, cv.COLOR_GRAY2BGR)
+            # From BGR to YUV, to extract the intensity and calculate U and V mean
             worldFrameYUV = cv.cvtColor(worldFrame, cv.COLOR_BGR2YUV)
             
             # Get Y, U, V
@@ -392,7 +387,7 @@ class PointSelection(QWidget):
         now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
         
         # First get the base dir
-        BASE_DIR = "relights/relight_%s/"%now_string
+        BASE_DIR = "relights/relight-%s/"%now_string
         
         try:
             # Creating the base dir
