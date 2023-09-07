@@ -1,22 +1,24 @@
 # PyQt imports
 from PyQt6.QtWidgets import QPushButton, QWidget, QLabel
-from PyQt6.QtGui import QPixmap, QImage, QPaintEvent, QPainter, QPen
-from PyQt6.QtCore import QRect, pyqtSignal, Qt
+from PyQt6.QtGui import QPixmap, QImage
+from PyQt6.QtCore import QRect, pyqtSignal
 from PyQt6 import uic
 
 # Other imports
 import os
 import numpy as np
 import cv2 as cv
-from concurrent.futures import ThreadPoolExecutor
+import time
+from datetime import datetime
 
-from utils import getVideoOrientation
+from utils import getVideoOrientation, videoNeedsResize, getLightDirectionPlot, storeTrainDataset
 
 # Custom class imports
 from classes.parameters import Parameters
 from classes.video import Video
-from classes.rtiAlgorithm import RTI
+from classes.videoAnalysis import VideoAnalysis
 from classes.videoSynchronisation import VideoSynchronisation
+from classes.threadPool import ThreadPool
 
 class PointSelection(QWidget):
     
@@ -41,7 +43,7 @@ class PointSelection(QWidget):
         self.points = []
                 
         # Initialise RTI class, which performs the feature matching and the storage of informations
-        self.rti = RTI()
+        self.videoAnalysis = VideoAnalysis()
         
         self.resizedX = 0
         self.resizedY = 0
@@ -89,13 +91,28 @@ class PointSelection(QWidget):
         self.startBtn.clicked.connect(lambda: self.startLightFrameExtraction())
     
     def getPoints(self, event):
+        pixmap = self.img.pixmap()
+        image_size = pixmap.size()
+        
+
         # Retrive points (in the resized space)
-        self.resizedX = event.pos().x()
-        self.resizedY = event.pos().y()
+        self.resizedX = event.pos().x() * image_size.width() / self.img.size().width()
+        self.resizedY = event.pos().y() * image_size.height() / self.img.size().height()
+        
+        camOrientation = getVideoOrientation(self.video)
+        needsResize = videoNeedsResize(self.video, self.params.getFrameDefaultSize(camOrientation))
+
+        defW = self.video.getWidth()
+        defH = self.video.getHeight()
+            
+        if (needsResize):
+            defSize = self.params.getFrameDefaultSize(camOrientation)
+            defW = defSize[0]
+            defH = defSize[1]
         
         # Then, given the original (W, H) and the resized (W, H), compute the scale for X and Y axis
-        scaleX = self.video.getWidth() / self.resizedW
-        scaleY = self.video.getHeight() / self.resizedH
+        scaleX = defW / self.resizedW
+        scaleY = defH / self.resizedH
         
         print(f"Scale X: {scaleX}")
         print(f"Scale Y: {scaleY}")
@@ -134,7 +151,7 @@ class PointSelection(QWidget):
         videoMoving = Video(self.params.getMvCamVideoPath())
 
         # Calculate the world homography using the points selected in the previous step and the frame size choosen before
-        self.worldHomography = self.rti.getWorldHomographyFromPts(self.points, int(self.params.getOutputImageSize()))
+        self.worldHomography = self.videoAnalysis.getWorldHomographyFromPts(self.points, int(self.params.getOutputImageSize()))
         
         if self.worldHomography is None:
             print("An error occurred: World homography has not been set correctly. ")
@@ -145,33 +162,28 @@ class PointSelection(QWidget):
         # Get the first frame from the static camera, which will be used during feature matching
         _, self.firstStaticFrame = videoStatic.getCurrentFrame()
         
-        # # Then, reset the position to the initial
-        # videoStatic.setVideoFrame()
-            
-        # # Now, before starting, synchronise the two videos
-        # videoSynch = VideoSynchronisation(self.params.getStCamVideoPath(), self.params.getMvCamVideoPath())
-        # videoSynch.synchroniseVideo()
-        
-        # # Then get the offset and check its value. If positive, then shift first video. Otherwise, do the opposite
-        # videoOffset = videoSynch.getOffset()
-        
-        # if videoOffset > 0:
-        #     # First video shifted. Set frame difference with it's own FPS
-        #     frameDiff = videoSynch.getFrameDifference(videoStatic.getFPS())
-        #     videoStatic.setVideoFrame(abs(frameDiff))
-        #     videoMoving.setVideoFrame()
-        #     print(f"Static video is shifted. The frame difference is: {abs(frameDiff)}")
-        # else:
-        #     # Second video shifted. Set frame difference with it's own FPS
-        #     frameDiff = videoSynch.getFrameDifference(videoMoving.getFPS())
-        #     videoStatic.setVideoFrame()
-        #     videoMoving.setVideoFrame(abs(frameDiff))
-        #     print(f"Moving video is shifted. The frame difference is: {abs(frameDiff)}")
-        
-        # Second video shifted. Set frame difference with it's own FPS
+        # Then, reset the position to the initial
         videoStatic.setVideoFrame()
-        videoMoving.setVideoFrame(abs(2))
-        print(f"Moving video is shifted. The frame difference is: {abs(2)}")
+            
+        # Now, before starting, synchronise the two videos
+        videoSynch = VideoSynchronisation(self.params.getStCamVideoPath(), self.params.getMvCamVideoPath())
+        videoSynch.synchroniseVideo()
+        
+        # Then get the offset and check its value. If positive, then shift first video. Otherwise, do the opposite
+        videoOffset = videoSynch.getOffset()
+        
+        if videoOffset > 0:
+            # First video shifted. Set frame difference with it's own FPS
+            frameDiff = videoSynch.getFrameDifference(videoStatic.getFPS())
+            videoStatic.setVideoFrame(abs(frameDiff))
+            videoMoving.setVideoFrame()
+            print(f"Static video is shifted. The frame difference is: {abs(frameDiff)}")
+        else:
+            # Second video shifted. Set frame difference with it's own FPS
+            frameDiff = videoSynch.getFrameDifference(videoMoving.getFPS())
+            videoStatic.setVideoFrame()
+            videoMoving.setVideoFrame(abs(frameDiff))
+            print(f"Moving video is shifted. The frame difference is: {abs(frameDiff)}")
         
         # Variable used to store the time calculated after each read on the video, in order to provide synchronisation
         timeStaticVideo = 0.
@@ -182,6 +194,22 @@ class PointSelection(QWidget):
         staticFrames = []
         movingFrames = []
         
+        # Get video orientation for both cases
+        stCamOrientation = getVideoOrientation(videoStatic)
+        mvCamOrientation = getVideoOrientation(videoMoving)
+        
+        # Set to None (so no resize is necessary)
+        stCamSize = mvCamSize = None
+        
+        if videoNeedsResize(videoStatic, self.params.getFrameDefaultSize(stCamOrientation)):
+            # Check if static camera size needs to be resized. And if so, retrieve the default dimension
+            stCamSize = self.params.getFrameDefaultSize(stCamOrientation)
+            
+        if videoNeedsResize(videoMoving, self.params.getFrameDefaultSize(mvCamOrientation)):
+            # Check if moving camera size needs to be resized. And if so, retrieve the default dimension
+            mvCamSize = self.params.getFrameDefaultSize(mvCamOrientation)
+        
+        # First, acquire pair of static/moving camera frames
         while videoStatic.isOpen() and videoMoving.isOpen():
             
             # Get frame from each video
@@ -211,88 +239,173 @@ class PointSelection(QWidget):
             if retStatic != True or retMoving != True or checkStaticFrame or checkMovingFrame:
                 break
             
+            if (stCamSize is not None):
+                # Resize the static frame
+                staticFrame = cv.resize(staticFrame, (stCamSize))
+            
+            if (mvCamSize is not None):
+                # Resize the moving frame
+                movingFrame = cv.resize(movingFrame, (mvCamSize))
+                
+            # Then apply the undistortion of the camera
+            staticFrame = videoStatic.applyUndistortion(
+                staticFrame, 
+                stCamCalibration.getIntrinsicMatrix(),
+                stCamCalibration.getDistortionCoefficients()
+            )
+            movingFrame = videoMoving.applyUndistortion(
+                movingFrame, 
+                mvCamCalibration.getIntrinsicMatrix(),
+                mvCamCalibration.getDistortionCoefficients()
+            )
+            
+            # Store current frame
             staticFrames.append(staticFrame)
             movingFrames.append(movingFrame)
             
-        print("Extracted synchronised frames")
-        print("Computing feature matching for all frames...")
+        videoStatic.releaseVideo()
+        videoMoving.releaseVideo()
+        cv.destroyAllWindows()
+         
+        # Create thread pool, with 4 threads
+        pool = ThreadPool(4)
+            
+        # Get keypoints and descriptor for first frame
+        if (stCamSize is not None):
+            # Resize the static frame
+            self.firstStaticFrame = cv.resize(self.firstStaticFrame, (stCamSize))
         
-        executor = ThreadPoolExecutor(max_workers = 4)
+        # Extract features from first frame
+        featuresFirstStaticFrame = self.videoAnalysis.extractFeaturesFromFrame(self.firstStaticFrame, 0)
         
-        # Get the light and frame pair for each frame, and filter them to get only the valid ones
-        lightFramePair = list(executor.map(self.processFrameMatching, staticFrames, movingFrames))
+        for i in range(len(staticFrames)):
+            # For each static frame, calculate its features
+            pool.add_task(self.videoAnalysis.extractFeaturesFromFrame, staticFrames[i], i)
+            
+        # Wait completion of the queue, and get the results
+        pool.wait_completion()
+        featuresStaticFrames = pool.get_results()
+        
+        for i in range(len(movingFrames)):
+            # For each static frame, calculate its features
+            pool.add_task(self.videoAnalysis.extractFeaturesFromFrame, movingFrames[i], i)
+            
+        # Wait completion of the queue, and get the results
+        pool.wait_completion()
+        featuresMovingFrames = pool.get_results()
+            
+        # Now sort features based on index
+        featuresStaticFrames = sorted(featuresStaticFrames, key = lambda x: x[0])
+        featuresMovingFrames = sorted(featuresMovingFrames, key = lambda x: x[0])
+        
+        # Replicate first frame features to then match it to all the other frames in the static camera 
+        featuresFirstFrame = [featuresFirstStaticFrame] * len(featuresStaticFrames)
+        
+        # Create a list of features that will be matched using feature matching technique
+        featuresStaticStatic = list(zip(featuresStaticFrames, featuresFirstFrame))
+        featuresStaticMoving = list(zip(featuresStaticFrames, featuresMovingFrames))
+    
+        for i in range(len(featuresStaticStatic)):
+            feature = featuresStaticStatic[i]
+            # For each static frame, calculate its features
+            pool.add_task(self.videoAnalysis.matchFeatures, feature)
+            
+        # Wait completion of the queue, and get the results
+        pool.wait_completion()
+        matchingStaticStatic = pool.get_results()
+        
+        # Repeat the process
+        for i in range(len(featuresStaticMoving)):
+            feature = featuresStaticMoving[i]
+            # For each static frame, calculate its features
+            pool.add_task(self.videoAnalysis.matchFeatures, feature)
+            
+        # Wait completion of the queue, and get the results
+        pool.wait_completion()
+        matchingStaticMoving = pool.get_results()
+        
+        # Now sort matching based on index
+        matchingStaticStatic = sorted(matchingStaticStatic, key = lambda x: x[0])
+        matchingStaticMoving = sorted(matchingStaticMoving, key = lambda x: x[0])
+        
+        for i in range(len(matchingStaticStatic)):
+            # Get frames
+            staticFrame = staticFrames[i]
+            movingFrame = movingFrames[i]
+            # Get homographies and dst pts
+            _, _, _, homographyStatic = matchingStaticStatic[i]
+            _, _, dstPts, homographyMoving = matchingStaticMoving[i]
+            
+            # Calculate light given parameters
+            pool.add_task(self.videoAnalysis.getLight, staticFrame, movingFrame, homographyStatic, dstPts, homographyMoving, self.worldHomography, self.kMoving)
+        
+        # Wait completion of the queue, and get the results
+        pool.wait_completion()
+        lightFramePair = pool.get_results()
+                
         validPairs = [pair for pair in lightFramePair if all(value is not None for value in pair)]
+            
+        # Number of frames read
+        nFrames = 0
         
-        print(f"Valid pairs: {len(validPairs)}")
-                
-        # Close the executor after all tasks are done
-        executor.shutdown()
-            
-    def processFrameMatching(self, staticFrame, movingFrame):
-        # Convert frames to grayscale
-        staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
-        movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
+        # Array with shape (400, 400, 2) which contains the sum of the U and V value of each pixel along the video
+        sumUV = np.zeros((400, 400, 2))
         
-        print("Frames changed colors")
+        # Array with shape (nFrames, 400, 400, 3) where, for each pixel, stores the intensity of it, and the light value X and Y (costant along the frame)
+        lightData = []
+            
+        for worldFrame, light in validPairs:
+            
+            # Show the light plot of the calculated light vector
+            cirlePlotPnP = getLightDirectionPlot(light, self.params.getOutputImageSize())
+            
+            # First, convert the frame from GRAY to BGR
+            # Then from BGR to YUV, to extract the intensity and calculate U and V mean
+            # worldFrameBGR = cv.cvtColor(worldFrame, cv.COLOR_GRAY2BGR)
+            worldFrameYUV = cv.cvtColor(worldFrame, cv.COLOR_BGR2YUV)
+            
+            # Get Y, U, V
+            Y, U, V = cv.split(worldFrameYUV)
+            
+            # Get the light position X and Y (Z can be removed now)            
+            light = np.tile(light[:2].flatten(), (self.params.getOutputImageSize(), self.params.getOutputImageSize(), 1))
         
-        # UniVE video
-        _, _, homographyStaticToStatic = self.rti.getHomographyWithFeatureMatching(staticFrame, self.firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
-        _, ptsMovingCam, homographyStaticToMoving = self.rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))    
+            # Now, store an array containing the intensity of the pixels and the respective light
+            data = np.dstack((Y, light))
+            
+            # Now get the current UV with shape (400, 400, 2), and sum their values inside the sumUV matrix with shape (400, 400, 2)
+            sumUV = sumUV + np.dstack((U, V))
+            
+            # Append the data
+            lightData.append(data)
+            
+            # Increament number of frames acquired
+            nFrames += 1
         
-        print("Homographies computed")
+        # Calculate UVMean
+        meanUV = sumUV / nFrames
         
-        if homographyStaticToStatic is not None and homographyStaticToMoving is not None:
-            
-            # Homography mapping points from world reference system to moving camera ref. system
-            hWorld2Moving = homographyStaticToMoving @ np.linalg.inv(homographyStaticToStatic) @ np.linalg.inv(self.worldHomography)
-            
-            # Homography mapping points from moving camera ref. system to world reference system 
-            hMoving2World = self.worldHomography @ homographyStaticToStatic @  np.linalg.inv(homographyStaticToMoving)
-            
-            # Option 1: Use a meshgrid to shift points from one ref. system to world ref. system
-            # # Create a grid in the moving camera ref. system
-            # lx, ly = np.meshgrid(np.linspace(450., 1150., 11), np.linspace(200., 900., 11))   
-            # # And plot the points             
-            # points2d = np.vstack((lx.flatten(), ly.flatten())).T
-            
-            # Option 2: Use the features detected in the cam. ref. system and shift points to world ref. system
-            points2d = ptsMovingCam
+        # Convert from list 2 array
+        lightData = np.stack(lightData)
         
-            # Add 1 to the source points
-            points3d = np.hstack([np.squeeze(points2d), np.ones([points2d.shape[0], 1], dtype=points2d.dtype)])
-            
-            # Source points inside world reference system
-            points3d = hMoving2World @ points3d.T 
-            
-            points3d /= points3d[2, :]
-            
-            points3d = points3d.T
-            
-            # Set last postion to 0
-            points3d[:, 2] = 0
-            
-            # Now get world frame using static camera and homographies to move into the world reference system
-            worldFrame = cv.warpPerspective(staticFrame, self.worldHomography @ homographyStaticToStatic, (self.params.getOutputImageSize(), self.params.getOutputImageSize()))
-            
-            # ... and do the same for moving camera, in order to get a similarity between frames
-            warpedMoving = cv.warpPerspective(movingFrame,  hWorld2Moving, (self.params.getOutputImageSize(), self.params.getOutputImageSize()), flags = cv.WARP_INVERSE_MAP)
-            
-            # Now, let's try to cross-correlate the two warped images.
-            # If the correlation is high, then the images are similar, so we can compute the light vector
-            # Otherwise, skip the frame
-            imgCorr = cv.matchTemplate(worldFrame, warpedMoving, cv.TM_CCORR_NORMED)
-                            
-            # Set as lower threshold 0.6 to have high confidentiality
-            if imgCorr[0][0] >= 0.96:
-                # Calculate the light vector using PnP
-                lightVector = self.rti.getLigthWithSolvePnP(points3d, np.squeeze(points2d), self.kMoving)
-            else:
-                # If not enough confidence, remove this frame
-                worldFrame = lightVector = None
-        else: 
-            # If no homographies, remove this frame
-            worldFrame = lightVector = None
+        # Now, store this values inside a file    
+        now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
         
-        return (worldFrame, lightVector)
-                
-            
+        # First get the base dir
+        BASE_DIR = "relights/relight_%s/"%now_string
+        
+        try:
+            # Creating the base dir
+            os.mkdir(BASE_DIR)
+        except:
+            print("Error creating the new folder. ")
+            # Not possible to create the dir, close the app
+            exit(-1)
+        
+        # Set the name of the file containing the inital dataset for training
+        fileName = BASE_DIR + "data.h5"
+        
+        print("Calculation of the light directions done")
+        
+        # Then create the train dataset
+        storeTrainDataset(fileName, lightData, meanUV)

@@ -130,16 +130,18 @@ class VideoAnalysis:
         # Return the homography, even if not defined (None)
         return homograhy
 
-    def extractFeaturesFromFrame(self,frame, idx):
-        keypoints, descriptors = self.sift.detectAndCompute(frame, None)
+    def getPoints(self):
+        return self.points
+
+    def extractFeaturesFromFrame(self, frame, idx):
+        grayFrame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        keypoints, descriptors = self.sift.detectAndCompute(grayFrame, None)
         return idx, keypoints, descriptors
     
     def matchFeatures(self, features):
         try:
-            # Get both features
             features1, features2 = features
             
-            # Extract keypoints and descriptors of both features
             idx1, keypoints1, descriptors1 = features1
             _, keypoints2, descriptors2 = features2
                     
@@ -160,14 +162,11 @@ class VideoAnalysis:
                 src.append(src_pt)
                 dst.append(dst_pt)
                     
-        # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
         if len(src) >= MIN_MATCH_COUNT:
             
-            # Get source and destination points found inside the good matches to build the homography between the two frames
             src = np.float32(src).reshape(-1, 1, 2)
             dst = np.float32(dst).reshape(-1, 1, 2)
             
-            # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
             
             return idx1, src, dst, homography

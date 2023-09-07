@@ -47,8 +47,6 @@ def main():
 
     # Store the first frame of the Static Camera
     _, firstStaticFrame = videoStatic.getCurrentFrame()
-    firstStaticFrame = cv.resize(firstStaticFrame, (1080, 1920))
-    firstStaticFrame = cv.cvtColor(firstStaticFrame, cv.COLOR_BGR2GRAY)
     
     # And try to get the 4 points in the static video
     worldHomography = videoAnalysis.getWorldHomography(videoStatic)
@@ -115,6 +113,8 @@ def main():
     videoStaticFPS = videoStatic.getFPS()
     videoMovingFPS = videoMoving.getFPS()
     
+    points = videoAnalysis.getPoints()
+    
     while True:
         
         # Get frame from each video
@@ -150,13 +150,27 @@ def main():
         staticFrames.append(staticFrame)
         movingFrames.append(movingFrame)
     
+        image = staticFrame
+        
+        # Add the points
+        for i in range(len(points)):
+            cv.circle(image, points[i], radius = 3, color=(0, 0, 255), thickness= 3)  
+            cv.line(image, points[i], points[(i + 1) % len(points)], (0, 0, 255), 3)
+        # Plot images
+        cv.imshow('Static Frame', image)
+                    
+        # Press Q on the keyboard to exit.
+        if (cv.waitKey(25) & 0xFF == ord('q')):
+            break
+            
+    
     print(f"Images acquired. {len(staticFrames)}")
     
     # Release videos and destroy windows
     videoStatic.releaseVideo()
     videoMoving.releaseVideo()
     cv.destroyAllWindows()
-    
+        
     # Create thread pool, with 4 threads
     pool = ThreadPool(4)
     
@@ -166,9 +180,8 @@ def main():
     start = time.time()
     
     for i in range(len(staticFrames)):
-        frame = cv.cvtColor(staticFrames[i], cv.COLOR_BGR2GRAY)
         # For each static frame, calculate its features
-        pool.add_task(videoAnalysis.extractFeaturesFromFrame, frame, i)
+        pool.add_task(videoAnalysis.extractFeaturesFromFrame, staticFrames[i], i)
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -183,9 +196,8 @@ def main():
     start = time.time()
     
     for i in range(len(movingFrames)):
-        frame = cv.cvtColor(movingFrames[i], cv.COLOR_BGR2GRAY)
         # For each static frame, calculate its features
-        pool.add_task(videoAnalysis.extractFeaturesFromFrame, frame, i)
+        pool.add_task(videoAnalysis.extractFeaturesFromFrame, movingFrames[i], i)
         
     # Wait completion of the queue
     pool.wait_completion()
