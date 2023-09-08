@@ -384,7 +384,7 @@ class PointSelection(QWidget):
         lightData = np.stack(lightData)
         
         # Now, store this values inside a file    
-        now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
+        now_string = datetime.now().strftime("%Y_%m_%d_%H_%M")
         
         # First get the base dir
         BASE_DIR = "relights/relight-%s/"%now_string

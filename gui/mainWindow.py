@@ -22,7 +22,7 @@ class MainWindow (QMainWindow):
         
     def initialiseWindow(self):
         # Set window size using the dimension given by constants
-        self.setGeometry(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.setGeometry(0, 0, 800, 600)
         
         self.setWindowTitle('Reflectance Transformation Imaging')
         
