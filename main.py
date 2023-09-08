@@ -6,7 +6,7 @@ from gui.mainWindow import MainWindow
 def initaliseMainWindow():
     # Build the Application (only one instance can exsists)
     app = QApplication([])
-    app.setStyleSheet('.QLabel { font-size: 14pt; }')
+    app.setStyleSheet('.QLabel { font-size: 14pt; font-family: "Avenir Next" }')
 
     # Show the main window
     mainWindow = MainWindow()

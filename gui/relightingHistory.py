@@ -1,5 +1,6 @@
 # PyQt imports
 from PyQt6.QtWidgets import QPushButton, QWidget, QScrollArea, QHBoxLayout, QVBoxLayout, QLabel
+from PyQt6.QtGui import QFont
 from PyQt6.QtCore import QRect, pyqtSignal, Qt
 from PyQt6 import uic
 
@@ -45,7 +46,7 @@ class RelightingHistory(QWidget):
         relightDir = os.path.join(parentDir, 'relights')
                 
         subFolders = [d for d in os.listdir(relightDir) if os.path.isdir(os.path.join(relightDir, d))]
-        subFolders.sort()
+        subFolders.sort(reverse = True)
         
         for i in range(len(subFolders)):
             folderName = subFolders[i]
@@ -60,7 +61,7 @@ class RelightingHistory(QWidget):
         
         # Create the widget 
         relWidget = QWidget()
-        relWidget.setFixedHeight(100)
+        relWidget.setFixedHeight(120)
         # And add with it a QHBoxLayout (meaning that we place objects in columns)
         hLayout = QHBoxLayout(relWidget)
         # Then we need to add 2 components:
@@ -68,6 +69,13 @@ class RelightingHistory(QWidget):
         # 2 - A button accessing to the relighting example
         vLayout = QVBoxLayout()
         title = QLabel(text= f"Relighting N° {idx}", parent=relWidget)
+        
+        # Set title font
+        titleFont = QFont()
+        titleFont.setBold(True)
+        titleFont.setPointSize(24)
+        title.setFont(titleFont)
+        
         # Get date
         date = folderName.split("-")[1]
         dateList = date.split("_")
@@ -78,11 +86,20 @@ class RelightingHistory(QWidget):
             int(dateList[3]),
             int(dateList[4])
         )
+        
         # Add widgets or buttons for each folder
-        openBtn = QPushButton("Open")  
         dateLbl = QLabel(text=f"Computed: {formattedDate.date()} at: {formattedDate.time()}")
+        
         vLayout.addWidget(title)
-        vLayout.addWidget(dateLbl)     
+        vLayout.addWidget(dateLbl)
+        
+        openBtn = QPushButton("Open relighting")
+        openBtn.setFixedHeight(50)
+        
+        openBtnFont = QFont()
+        openBtnFont.setPointSize(18)
+        openBtn.setFont(openBtnFont)
+                
         vLayout.addWidget(openBtn) 
 
         # Add elements to horizontal Layout

@@ -281,7 +281,7 @@
        <item>
         <widget class="QLabel" name="stCamLbl">
          <property name="text">
-          <string>Upload the video acquiring the calibration target using the smartphone which will be then placed</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Upload the video acquiring the calibration target using the smartphone which will be then placed&lt;/p&gt;&lt;p&gt;above the object to look at the object reflectance behavior&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>
@@ -317,7 +317,7 @@
        <item>
         <widget class="QLabel" name="mvCamLbl">
          <property name="text">
-          <string>Upload the video acquiring the calibration target using the smartphone which will be then used&lt;/p&gt;&lt;p&gt;to illuminate the object under different positions</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Upload the video acquiring the calibration target using the smartphone which will be then used&lt;/p&gt;&lt;p&gt;to illuminate the object under different positions&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>

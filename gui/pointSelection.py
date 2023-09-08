@@ -64,23 +64,27 @@ class PointSelection(QWidget):
             # Based on the original dimension, resize the video
             windowType = getVideoOrientation(self.video)
             self.resizedW, self.resizedH = self.params.getResizedSizePointCapture(windowType)
-            
+
             # Then resize the frame to choosen dimension
             frame = self.video.resizeVideo(frame, (self.resizedW, self.resizedH))
             
             # ... and create the QImage
             qImage = QImage(frame.data, self.resizedW, self.resizedH, 3 * self.resizedW, QImage.Format.Format_RGB888).rgbSwapped()
 
+            # Update fields
+            self.resizedW = self.resizedW + 150
+            self.resizedH = self.resizedH + 50
+            
             # Emit the signal to change the window size to the dimension of the frame
-            self.geometryChanged.emit(QRect(0, 0, self.resizedW, self.resizedH + 200))
+            self.geometryChanged.emit(QRect(0, 0, self.resizedW, self.resizedH ))
             
             # Set the pixmap
             self.pixmap = QPixmap(qImage)
             # And add it to the label
             self.img.setPixmap(self.pixmap)
             
-            # Resize the widget to get the image inside
-            self.resize(self.resizedW, self.resizedH)
+            # Resize the widget to get the image inside            
+            self.setGeometry(QRect(0, 0, self.resizedW, self.resizedH))
             
             print("Geometry of point selection: ", self.geometry())
             

@@ -1,11 +1,5 @@
 from classes.cameraCalibration import CameraCalibration
 
-class LightDirection:
-    def __init__(self, frame, lightVector) -> None:
-        self.frame = frame
-        self.ligthVector = lightVector
-        pass
-
 class Singleton:
     """Alex Martelli implementation of Singleton (Borg)
     http://python-3-patterns-idioms-test.readthedocs.io/en/latest/Singleton.html"""
@@ -35,11 +29,10 @@ class Parameters (Singleton):
     defaultSizeOne = 1920
     defaultSizeTwo = 1080
     
-    defaultResizeOne = 960
-    defaultResizeTwo = 540
+    defaultResizeOne = 480
+    defaultResizeTwo = 270
     
-    # LIGHT VECTOR
-    lightVectors = []
+    basePath = None
 
     def __init__(self) -> None:
         Singleton.__init__(self)
@@ -105,10 +98,9 @@ class Parameters (Singleton):
         if type == "portrait":
             return (self.defaultResizeTwo, self.defaultResizeOne)
         
+    def setRelightingBasePath(self, path):
+        self.basePath = path
     
-    def addLightVector(self, light, frame):
-        self.lightVectors.append(LightDirection(frame, light))
-        
-    def getLightVectors(self):
-        return self.lightVectors
+    def getRelightinBasePath(self):
+        return self.basePath
     
