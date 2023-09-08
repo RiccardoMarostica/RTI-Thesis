@@ -15,6 +15,12 @@ def storeTrainDataset(fileName, lightData, UVMean):
     f.create_dataset("UVMean", UVMean.shape, data=UVMean)
     # Then stop writing
     f.close()
+    
+def getUVMean(datafile):
+    # Now, read the coin_train file, created in the previous step (which contains the train data and the UVMean)
+    with h5py.File(datafile,"r") as f:
+        # Array with UV mean for each pixel
+        return np.array(f["UVMean"])
 
 def predictRelight(model, L, proj_pixels, device = None):
     if device is None:
@@ -73,6 +79,7 @@ def normaliseCoordinate(value : float, dim: int) -> float:
 
 def getCoordinateFromNormalised(value: float, dim: int) -> int:
     return int(((value + 1) * dim) / 2)
+
 
 def getRelightingPlot(dim: int):
     

@@ -143,25 +143,8 @@ def main():
                     
         staticFrame = cv.resize(staticFrame, (1080, 1920))
         
-        # # Convert frames to grayscale
-        # staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
-        # movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
-        
         staticFrames.append(staticFrame)
         movingFrames.append(movingFrame)
-    
-        image = staticFrame
-        
-        # Add the points
-        for i in range(len(points)):
-            cv.circle(image, points[i], radius = 3, color=(0, 0, 255), thickness= 3)  
-            cv.line(image, points[i], points[(i + 1) % len(points)], (0, 0, 255), 3)
-        # Plot images
-        cv.imshow('Static Frame', image)
-                    
-        # Press Q on the keyboard to exit.
-        if (cv.waitKey(25) & 0xFF == ord('q')):
-            break
             
     
     print(f"Images acquired. {len(staticFrames)}")
@@ -345,6 +328,32 @@ def main():
     
     # Then create the train dataset
     storeTrainDataset(fileName, lightData, meanUV)
+    pca = PCAClass(BASE_DIR, fileName, 8)
+
+    print("Reading dataset...")
+    pca.readDataset()
+    print("Reading dataset: DONE")
+
+    print("Applying PCA...")
+    pca.applyPCA()
+    print("Applying PCA: DONE")
+
+    nn = NeuralNetwork(BASE_DIR, 8)
+
+    print("Extracting dataset...")
+    nn.extractDatasets()
+    print("Extracting dataset: DONE")
+
+    print("Shufflings dataset...")
+    nn.shuffleDataset()
+    print("Shuffling dataset: DONE")
+
+    print("Executing NN training...")
+    nn.executeTraining()
+    print("Executing NN trainin: DONE")
+    
+    print("Showing results")    
+    nn.showNNResults()    
     
 def testNNWithThreads():
     
@@ -380,8 +389,14 @@ def testNNWithThreads():
     print("Showing results")    
     nn.showNNResults()    
 
+def testUVMean():
+    BASE_DIR = "relights/relight-2023_09_08_16_10/"
+    nn = NeuralNetwork(BASE_DIR)
+    nn.extractUVMean()
+    
         
 if __name__ == "__main__":
-    main()
+    # main()
+    testUVMean()
     # testNNWithThreads()
     

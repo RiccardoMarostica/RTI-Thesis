@@ -39,7 +39,7 @@ class MainWindow (QMainWindow):
         self.setCalibration()
         self.setVideoAnalysis()
         self.setPointSelection()
-        # self.setRelighting()
+        self.setRelighting()
         self.setRelightingHistory()
             
         self.homepage.show()
@@ -85,15 +85,13 @@ class MainWindow (QMainWindow):
         
     def setPointSelection(self):
         self.pointSelection.geometryChanged.connect(self.handleGeometry)
-        self.pointSelection.setStartBtn()
+        self.pointSelection.setStartBtn(self.relighting)
         
     def setRelighting(self):
         self.relighting.geometryChanged.connect(self.handleGeometry)
-        self.relighting.setOutputImage()
-        self.relighting.setPlotImage()
     
     def setRelightingHistory(self):
-        self.relightingHistory.setScrollArea() 
+        self.relightingHistory.setScrollArea(self.relighting) 
     
     def handleGeometry(self, geometry):
         self.setGeometry(geometry)

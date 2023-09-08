@@ -34,8 +34,8 @@
   <property name="Description" stdset="0">
    <string/>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
     <layout class="QVBoxLayout" name="vBoxLayout">
      <property name="sizeConstraint">
       <enum>QLayout::SetMaximumSize</enum>

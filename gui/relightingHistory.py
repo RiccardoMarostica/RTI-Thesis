@@ -10,6 +10,7 @@ from datetime import datetime
 
 # Custom class imports
 from classes.parameters import Parameters
+from gui.relighting import Relighting
 
 class RelightingHistory(QWidget):
     
@@ -21,14 +22,16 @@ class RelightingHistory(QWidget):
         # Compute the path
         basePath = os.path.dirname(__file__)       
         path = os.path.join(basePath, "templates/relighting-history.ui")
-                        
+                     
+        self.params = Parameters()
+           
         # Load the UI
         uic.loadUi(path, self)
         
         # Hide by default 
         self.hide()
         
-    def setScrollArea(self):
+    def setScrollArea(self, dstPage: Relighting):
         # Create scroll area
         self.scrollArea : QScrollArea = self.findChild(QScrollArea, 'scrollArea')
         self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
@@ -50,9 +53,9 @@ class RelightingHistory(QWidget):
         
         for i in range(len(subFolders)):
             folderName = subFolders[i]
-            self.addRelightingHistory(i, folderName)
+            self.addRelightingHistory(i, folderName, dstPage)
 
-    def addRelightingHistory(self,idx, folderName):
+    def addRelightingHistory(self,idx, folderName, dstPage: Relighting):
 
         # Create widget for the relighting, where we add:
         # 1 - Title: Relighting - [REL_NUMBER_INC]
@@ -68,7 +71,7 @@ class RelightingHistory(QWidget):
         # 1 - A vertical Box containing textual information (Title and Date)
         # 2 - A button accessing to the relighting example
         vLayout = QVBoxLayout()
-        title = QLabel(text= f"Relighting N° {idx}", parent=relWidget)
+        title = QLabel(text= f"Relighting N° {idx}")
         
         # Set title font
         titleFont = QFont()
@@ -95,6 +98,7 @@ class RelightingHistory(QWidget):
         
         openBtn = QPushButton("Open relighting")
         openBtn.setFixedHeight(50)
+        openBtn.clicked.connect(lambda: self.setButtonPath(folderName, dstPage))
         
         openBtnFont = QFont()
         openBtnFont.setPointSize(18)
@@ -107,3 +111,15 @@ class RelightingHistory(QWidget):
 
         # Add the HorizontalLayout to the scroll content
         self.scrollContent.layout().addWidget(relWidget)
+        
+    def setButtonPath(self, folderName, dstPage: Relighting):
+        path = f"relights/{folderName}/"
+        self.params.setRelightingBasePath(path)
+    
+        # Then, hide the current widget and show the new one
+        self.hide()
+        
+        # Prepare dst page
+        dstPage.setPlotImage()
+        dstPage.setOutputImage()
+        dstPage.show()

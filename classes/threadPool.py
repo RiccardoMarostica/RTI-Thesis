@@ -5,7 +5,7 @@ from threading import Thread, Lock
 class ThreadPool:
     def __init__(self, num_threads):
         self.num_threads = num_threads
-        self.task_queue = Queue()
+        self.task_queue = Queue(1000)
         self.result_queue = Queue()
         self.threads = []
         self.lock = Lock()

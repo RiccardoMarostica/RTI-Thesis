@@ -32,7 +32,10 @@ class Parameters (Singleton):
     defaultResizeOne = 480
     defaultResizeTwo = 270
     
+    # RELIGHTING MODEL VARS
     basePath = None
+    pcaNumber = 8
+    
 
     def __init__(self) -> None:
         Singleton.__init__(self)
@@ -103,4 +106,7 @@ class Parameters (Singleton):
     
     def getRelightinBasePath(self):
         return self.basePath
+    
+    def getPCANumber(self):
+        return self.pcaNumber
     

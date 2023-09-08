@@ -13,7 +13,7 @@ from classes.pixelEncoder import *
 from classes.threadPool import ThreadPool
 
 class NeuralNetwork:
-    def __init__(self, baseDir, pcaNumber) -> None:
+    def __init__(self, baseDir) -> None:
         
         # H value where H is a frequency domain space -> So we have a 20 dimensional space (2 x 10)
         self.light_freqs = 10
@@ -25,9 +25,6 @@ class NeuralNetwork:
 
         # Epoch size
         self.epochs = 20
-
-        # Number of PCA bases. Value in which PSNR and SSIM stabilise
-        self.pcaNumber = pcaNumber
         
         # multiply 1024 for the 20-dimensional space
         self.batch_size = 1024*20
@@ -180,7 +177,7 @@ class NeuralNetwork:
         model.to(device)
         
         # Start the train for the first epoch
-        train1 = self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr, self.epochs, device)
+        self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr, self.epochs, device)
 
         # Start the train for the second epoch
         train2 = self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr*1e-1, 10, device)
@@ -198,7 +195,25 @@ class NeuralNetwork:
         
         # Store them
         torch.save(model.state_dict(), MODEL_PATH)
-        print("Model saved in ", MODEL_PATH)  
+        print("Model saved in ", MODEL_PATH)
+    
+    def extractUVMean(self):
+        datafile = self.baseDir + "data.h5"
+        # Now, read the coin_train file, created in the previous step (which contains the train data and the UVMean)
+        with h5py.File(datafile,"r") as f:
+            # Array with UV mean for each pixel
+            self.UVmean = np.array(f["UVMean"])
+                            
+        MODEL_PATH = self.outDir + "/uvMean.h5"
+        
+        f = h5py.File(MODEL_PATH, "w")
+        # ... and create datasets
+        f.create_dataset("UVMean", self.UVmean.shape, data=self.UVmean)
+        # Then stop writing
+        f.close()
+
+        # Lastly, delete the datafile
+        os.remove(datafile)
         
     def showNNResults(self):
         # Get proj pixels file

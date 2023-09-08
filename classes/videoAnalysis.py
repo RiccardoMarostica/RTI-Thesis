@@ -3,6 +3,7 @@ import numpy as np
 from constants import *
 
 from classes.video import Video
+from classes.parameters import Parameters
 
 class VideoAnalysis:
     def __init__(self) -> None:
@@ -13,6 +14,8 @@ class VideoAnalysis:
         # Create methods to perform feature matching
         self.sift = cv.SIFT_create(nfeatures=1000)
         self.flann = cv.FlannBasedMatcher_create()
+        
+        self.params = Parameters()
         
         pass
 
@@ -99,9 +102,9 @@ class VideoAnalysis:
                 # In this case we are setting to project the image into a square
                 destinationPoints = np.array([
                     [0, 0],
-                    [DEFAULT_SQUARE_SIZE, 0],
-                    [DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE],
-                    [0, DEFAULT_SQUARE_SIZE]
+                    [self.params.getOutputImageSize(), 0],
+                    [self.params.getOutputImageSize(), self.params.getOutputImageSize()],
+                    [0, self.params.getOutputImageSize()]
                 ])
 
                 # Convert the points into integer value
@@ -206,11 +209,11 @@ class VideoAnalysis:
             points3d[:, 2] = 0
             
             # Now get world frame using static camera and homographies to move into the world reference system
-            worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
-            # worldFrame = cv.warpPerspective(staticFrame, worldHomography, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE))
+            worldFrame = cv.warpPerspective(staticFrame, worldHomography @ homographyStaticToStatic, (self.params.getOutputImageSize(), self.params.getOutputImageSize()))
+            # worldFrame = cv.warpPerspective(staticFrame, worldHomography, (self.params.getOutputImageSize(), self.params.getOutputImageSize()))
             
             # ... and do the same for moving camera, in order to get a similarity between frames
-            warpedMoving = cv.warpPerspective(movingFrame,  hWorld2Moving, (DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE), flags = cv.WARP_INVERSE_MAP)
+            warpedMoving = cv.warpPerspective(movingFrame,  hWorld2Moving, (self.params.getOutputImageSize(), self.params.getOutputImageSize()), flags = cv.WARP_INVERSE_MAP)
         
             
             # Now, let's try to cross-correlate the two warped images.
