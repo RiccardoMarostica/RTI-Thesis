@@ -387,7 +387,16 @@ def testNNWithThreads():
     print("Executing NN trainin: DONE")
     
     print("Showing results")    
-    nn.showNNResults()    
+    nn.showNNResults()
+    
+def testRelighting():
+    BASE_DIR = "relights/relight-2023_09_09_11_02/"    
+    nn = NeuralNetwork(BASE_DIR)
+    
+    uvMean = getUVMean(BASE_DIR + "models/uvMean.h5").astype(np.uint8)
+    
+    print("Showing results")    
+    nn.showNNResults(uvMean)
 
 def testUVMean():
     BASE_DIR = "relights/relight-2023_09_08_16_10/"
@@ -397,6 +406,6 @@ def testUVMean():
         
 if __name__ == "__main__":
     # main()
-    testUVMean()
+    testRelighting()
     # testNNWithThreads()
     

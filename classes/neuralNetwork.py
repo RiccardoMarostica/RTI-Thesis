@@ -9,9 +9,6 @@ from utils import *
 from constants import *
 from classes.pixelEncoder import *
 
-
-from classes.threadPool import ThreadPool
-
 class NeuralNetwork:
     def __init__(self, baseDir) -> None:
         
@@ -56,36 +53,36 @@ class NeuralNetwork:
         self.x_train = np.array(self.x_train)
         self.y_train = np.array(self.y_train)
         
-        pool = ThreadPool(4)
+        # pool = ThreadPool(4)
 
-        # Permute X train data
-        chunks = np.array_split(self.x_train, 4, axis = 0)
+        # # Permute X train data
+        # chunks = np.array_split(self.x_train, 4, axis = 0)
         
-        for i in range(len(chunks)):
-            chunk = chunks[i]
+        # for i in range(len(chunks)):
+        #     chunk = chunks[i]
             
-            pool.add_task(self.permuteChunk, chunk)
+        #     pool.add_task(self.permuteChunk, chunk)
         
-        pool.wait_completion()
+        # pool.wait_completion()
         
-        self.x_train = np.concatenate(pool.get_results(), axis = 0)
+        # self.x_train = np.concatenate(pool.get_results(), axis = 0)
         
-        # Permute Y (intensity) train data
-        chunks = np.array_split(self.y_train, 4, axis = 0)
+        # # Permute Y (intensity) train data
+        # chunks = np.array_split(self.y_train, 4, axis = 0)
         
-        for i in range(len(chunks)):
-            chunk = chunks[i]
+        # for i in range(len(chunks)):
+        #     chunk = chunks[i]
             
-            pool.add_task(self.permuteChunk, chunk)
+        #     pool.add_task(self.permuteChunk, chunk)
         
-        pool.wait_completion()
+        # pool.wait_completion()
         
-        self.y_train = np.concatenate(pool.get_results(), axis = 0)
+        # self.y_train = np.concatenate(pool.get_results(), axis = 0)
         
-        # print("Shuffling...")
-        # perm_indices = np.random.permutation(self.x_train.shape[0])
-        # self.x_train = self.x_train[perm_indices,...]
-        # self.y_train = self.y_train[perm_indices,...]
+        print("Shuffling...")
+        perm_indices = np.random.permutation(self.x_train.shape[0])
+        self.x_train = self.x_train[perm_indices,...]
+        self.y_train = self.y_train[perm_indices,...]
         
     def train_one_epoch(self, x_train, y_train, model, loss_fn, optimizer, batch_size, device ):
         
@@ -180,7 +177,7 @@ class NeuralNetwork:
         self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr, self.epochs, device)
 
         # Start the train for the second epoch
-        train2 = self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr*1e-1, 10, device)
+        self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr*1e-1, 10, device)
         
         # Build the optput dir to store the weights
         try:
@@ -215,7 +212,7 @@ class NeuralNetwork:
         # Lastly, delete the datafile
         os.remove(datafile)
         
-    def showNNResults(self):
+    def showNNResults(self, uvMean):
         # Get proj pixels file
         proj_pixels_pca_file = self.trainDataDir + "/proj_pixels_pca.npy"
         self.proj_pixels = np.load(proj_pixels_pca_file)
@@ -232,6 +229,8 @@ class NeuralNetwork:
         # Now start to plot the light
         center_x = center_y = DEFAULT_SQUARE_SIZE // 2
         radius = DEFAULT_SQUARE_SIZE // 2    
+        
+        self.UVmean = uvMean
         
         while(True):
             # Draw plot image
@@ -256,5 +255,9 @@ class NeuralNetwork:
             images = predictRelight(self.model, light, self.proj_pixels)
             
             Y_img = images[0,:,:].astype(np.uint8)
+            outImg = np.expand_dims(Y_img, axis=2)
             
-            cv.imshow("Output: ", Y_img)
+            outImg = np.dstack((outImg, self.UVmean))
+            outImg = cv.cvtColor(outImg, cv.COLOR_YUV2BGR)   
+            
+            cv.imshow("Output: ", outImg)

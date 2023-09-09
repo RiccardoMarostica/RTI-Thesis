@@ -16,7 +16,7 @@ class VideoAnalysis:
         self.flann = cv.FlannBasedMatcher_create()
         
         self.params = Parameters()
-        
+                
         pass
 
     def getPointFromImage(self, event, x, y, flags, params):

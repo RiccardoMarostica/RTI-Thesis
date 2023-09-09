@@ -55,10 +55,6 @@ class Relighting(QWidget):
         # Draw the circle
         painter.drawEllipse(self.center_x - self.radius, self.center_y - self.radius, self.radius * 2, self.radius * 2)
         
-        # Draw axis
-        painter.drawLine(self.center_x, margin, self.center_x, self.pixmapPlot.height() - margin)
-        painter.drawLine(margin, self.center_y, self.pixmapPlot.width() - margin, self.center_y)
-        
         if x is not None and y is not None:
                 
             # Retrive points (in the resized space)
@@ -75,6 +71,7 @@ class Relighting(QWidget):
         self.basePath = self.params.getRelightinBasePath()
         self.uvMean = getUVMean(self.basePath + "models/uvMean.h5").astype(np.uint8)
         
+        # Get default size of the image
         self.defaultImgSize = self.uvMean.shape[0]
         
         # Get the QLabel
@@ -91,7 +88,7 @@ class Relighting(QWidget):
         self.geometryChanged.emit(QRect(0, 0, geometryResize, (self.defaultImgSize + 200)))
         
         # Init the pixmap with a black background
-        self.pixmapPlot = QPixmap(self.defaultImgSize, self.defaultImgSize)
+        self.pixmapPlot = QPixmap(self.plotImg.size())
         self.pixmapPlot.fill(Qt.GlobalColor.black)
         self.drawPlot()
         
@@ -121,12 +118,13 @@ class Relighting(QWidget):
         x, y = event.pos().x(), event.pos().y()
         
         # Init the pixmap with a black background
-        self.pixmapPlot = QPixmap(self.defaultImgSize, self.defaultImgSize)
+        self.pixmapPlot = QPixmap(self.plotImg.size())
         self.pixmapPlot.fill(Qt.GlobalColor.black)
         
         self.drawPlot(x, y)
         
-        if math.dist([x,y], [self.center_x, self.center_y]) < self.radius:    
+        if math.dist([x,y], [self.center_x, self.center_y]) < self.radius:
+            print("Inside")
             light = np.array([[normaliseCoordinate(x, self.defaultImgSize), normaliseCoordinate(y, self.defaultImgSize)]])
             # Generate the output images (only one in this case)
             images = predictRelight(self.model, light, self.projPixels)
@@ -135,11 +133,15 @@ class Relighting(QWidget):
             outImg = images[0,:,:].astype(np.uint8)
             outImg = np.expand_dims(outImg, axis=2)
             
-            outImg = np.dstack((outImg, self.uvMean))
-            outImg = cv.cvtColor(outImg, cv.COLOR_YUV2RGB)        
-                        
-            qImage = QImage(outImg.data, self.defaultImgSize, self.defaultImgSize, self.defaultImgSize, QImage.Format.Format_Grayscale8)
+            # Concatenate to get YUV Scale and convert to original BGR Scale
+            outImg = np.dstack((outImg, self.uvMean))    
+            outImg = cv.cvtColor(outImg, cv.COLOR_YUV2BGR)        
             
+            # Create image with predicted relighting
+            h, w, _ = outImg.shape
+            qImage = QImage(outImg.data, w, h, 3 * w, QImage.Format.Format_BGR888)
+            
+            # Set pixmap for output image                        
             self.outputImg.setPixmap(QPixmap(qImage))
         
         
