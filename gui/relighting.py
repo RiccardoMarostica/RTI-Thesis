@@ -96,6 +96,7 @@ class Relighting(QWidget):
         self.resize(geometryResize, (self.defaultImgSize + 200))
         
         self.plotImg.mouseMoveEvent = self.relightPlot
+        self.plotImg.mouseClickEvent = self.downloadRelightedImg
         
     def setOutputImage(self):
         
@@ -143,5 +144,7 @@ class Relighting(QWidget):
             
             # Set pixmap for output image                        
             self.outputImg.setPixmap(QPixmap(qImage))
-        
+    
+    def downloadRelightedImg(self, event):
+        pass
         
