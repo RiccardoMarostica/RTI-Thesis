@@ -1,6 +1,6 @@
 # PyQt imports
-from PyQt6.QtWidgets import QPushButton, QWidget, QLabel
-from PyQt6.QtGui import QPixmap, QImage, QPaintEvent, QPainter, QPen
+from PyQt6.QtWidgets import QWidget, QLabel, QPushButton
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QPen
 from PyQt6.QtCore import QRect, pyqtSignal, Qt
 from PyQt6 import uic
 
@@ -8,9 +8,9 @@ from PyQt6 import uic
 import os
 import numpy as np
 import torch
-from torch import nn
 import numpy as np
 import math
+from datetime import datetime
 
 # Custom class imports
 from utils import *
@@ -41,6 +41,8 @@ class Relighting(QWidget):
         
         self.resizedX = 0
         self.resizedY = 0
+        
+        self.isMoving = True
         
     def drawPlot(self, x = None, y = None):
         painter = QPainter(self.pixmapPlot)
@@ -77,6 +79,9 @@ class Relighting(QWidget):
         # Get the QLabel
         self.plotImg = self.findChild(QLabel, 'relightingPlotLbl')
         self.outputImg = self.findChild(QLabel, 'outputImgLbl')
+        self.downloadBtn = self.findChild(QPushButton, 'downloadBtn')
+        
+        self.downloadBtn.setEnabled(False)
         
         # Add set mouse tracking
         self.plotImg.setMouseTracking(True)
@@ -95,8 +100,12 @@ class Relighting(QWidget):
         # Resize the widget to get the image inside
         self.resize(geometryResize, (self.defaultImgSize + 200))
         
+        # Set events for the plotting image
         self.plotImg.mouseMoveEvent = self.relightPlot
-        self.plotImg.mouseClickEvent = self.downloadRelightedImg
+        self.plotImg.mousePressEvent = self.getImageFrame
+        
+        # Set event to download the image
+        self.downloadBtn.clicked.connect(self.downloadRelightedImg)
         
     def setOutputImage(self):
         
@@ -118,33 +127,59 @@ class Relighting(QWidget):
         # Retrive points (in the resized space)
         x, y = event.pos().x(), event.pos().y()
         
-        # Init the pixmap with a black background
-        self.pixmapPlot = QPixmap(self.plotImg.size())
-        self.pixmapPlot.fill(Qt.GlobalColor.black)
-        
-        self.drawPlot(x, y)
-        
-        if math.dist([x,y], [self.center_x, self.center_y]) < self.radius:
-            print("Inside")
-            light = np.array([[normaliseCoordinate(x, self.defaultImgSize), normaliseCoordinate(y, self.defaultImgSize)]])
-            # Generate the output images (only one in this case)
-            images = predictRelight(self.model, light, self.projPixels)
+        if self.isMoving:
+            # Init the pixmap with a black background
+            self.pixmapPlot = QPixmap(self.plotImg.size())
+            self.pixmapPlot.fill(Qt.GlobalColor.black)
             
-            # Extract the intensity of the image in each pixel, and convert them into integers
-            outImg = images[0,:,:].astype(np.uint8)
-            outImg = np.expand_dims(outImg, axis=2)
+            self.drawPlot(x, y)
             
-            # Concatenate to get YUV Scale and convert to original BGR Scale
-            outImg = np.dstack((outImg, self.uvMean))    
-            outImg = cv.cvtColor(outImg, cv.COLOR_YUV2BGR)        
+            if math.dist([x,y], [self.center_x, self.center_y]) < self.radius:
+                light = np.array([[normaliseCoordinate(x, self.plotImg.size().width()), normaliseCoordinate(y, self.plotImg.size().height())]])
+                # Generate the output images (only one in this case)
+                images = predictRelight(self.model, light, self.projPixels)
+                
+                # Extract the intensity of the image in each pixel, and convert them into integers
+                outImg = images[0,:,:].astype(np.uint8)
+                outImg = np.expand_dims(outImg, axis=2)
+                
+                # Concatenate to get YUV Scale and convert to original BGR Scale
+                outImg = np.dstack((outImg, self.uvMean))    
+                outImg = cv.cvtColor(outImg, cv.COLOR_YUV2BGR)        
+                
+                # Create image with predicted relighting
+                h, w, _ = outImg.shape
+                qImage = QImage(outImg.data, w, h, 3 * w, QImage.Format.Format_BGR888)
+                
+                # Set pixmap for output image                        
+                self.outputImg.setPixmap(QPixmap(qImage))
+                
+    def getImageFrame(self, event):
+        if self.isMoving:
+            self.isMoving = False
             
-            # Create image with predicted relighting
-            h, w, _ = outImg.shape
-            qImage = QImage(outImg.data, w, h, 3 * w, QImage.Format.Format_BGR888)
+            self.downloadBtn.setEnabled(True)
+        else: 
+            self.isMoving = True
             
-            # Set pixmap for output image                        
-            self.outputImg.setPixmap(QPixmap(qImage))
+            self.downloadBtn.setEnabled(False)
     
     def downloadRelightedImg(self, event):
-        pass
+        # Then we recover the image from the pixmap
+        pixmap : QPixmap = self.outputImg.pixmap()
         
+        image = pixmap.toImage()
+                
+        # Now, store this values inside a file
+        now_string = datetime.now().strftime("%Y_%m_%d_%H_%M")
+        folderPath = self.basePath + "outputs/"
+        
+        if not os.path.exists(folderPath):
+            # If folder does not exsist, create it
+            os.makedirs(folderPath)    
+        
+        # Set file name
+        fileName = folderPath + "capture_%s.png"%(now_string)
+        
+        # Save the image to the chosen file path
+        image.save(fileName)

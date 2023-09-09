@@ -62,7 +62,7 @@
       </layout>
      </item>
      <item>
-      <widget class="QPushButton" name="startBtn">
+      <widget class="QPushButton" name="downloadBtn">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
