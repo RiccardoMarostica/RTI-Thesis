@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np
 
+from utils import getVideoOrientation
 from classes.video import Video
 
 
@@ -49,7 +50,11 @@ class CameraCalibration:
         self.intrinsicParameters = []
         self.distortionCoefficients = []
 
-    def calibrateCamera(self) -> bool:
+    def storeCalibrationDataFromFiles(self, matrix, dist, debug = False):
+        self.setIntrinsicMatrix(matrix)
+        self.setDistortionCoefficients(dist)
+
+    def calibrateCamera(self, size = None) -> bool:
         """The function performs camera calibration, using the Video instance passed in the constructor of the class.
         The function loops over the Calibration video (in which the Calibration target is kept stationary at XY plane), detect the corners in the Calibration target, and store them inside the Image Points list, which denotes 2D Image Points.
 
@@ -67,13 +72,10 @@ class CameraCalibration:
             # Means there is a frame in the buffer
             if ret == True:
                 
-                if (self.video.getWidth() < self.video.getHeight()):
-                    # Portrait
-                    frame = cv.resize(frame, (1080, 1920))
-                else:
-                    # Landscape
-                    frame = cv.resize(frame, (1920, 1080))
-                
+                if size is not None:
+                    # Based on the size in input, resize the frame
+                    frame = cv.resize(frame, size)
+                    
                 # Convert image from BRG to GRAY
                 grayFrame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
@@ -130,11 +132,17 @@ class CameraCalibration:
             self.meanError += error
 
         # Store in the class field both instrinsic matrix and distortion coefficients
-        self.intrinsicParameters = matrix
-        self.distortionCoefficients = dist
+        self.setIntrinsicMatrix(matrix)
+        self.setDistortionCoefficients(dist)
 
         # Camera calibration done without errors
         return True
+    
+    def setIntrinsicMatrix(self, matrix):
+        self.intrinsicParameters = matrix
+    
+    def setDistortionCoefficients(self, dist):
+        self.distortionCoefficients = dist
 
     def getIntrinsicMatrix(self) -> list:
         """The function retuns the Camera Intrinsic Parameters Matrix (K - 3 x 3 Matrix).\n

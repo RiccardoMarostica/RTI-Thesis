@@ -3,7 +3,10 @@ from PyQt6.QtWidgets import QPushButton, QWidget, QFileDialog, QSpinBox
 from PyQt6 import uic
 
 # Other imports
-import os
+import os, numpy as np
+from datetime import datetime
+
+from utils import getVideoOrientation, videoNeedsResize
 
 # Custom class imports
 from classes.parameters import Parameters
@@ -65,11 +68,9 @@ class Calibration(QWidget):
             self.cornersY = self.yAxisSb.value()  
                 
     def setCalibrationBtn(self, dstPage: QWidget):
-        
         # Set button to start with camera calibration
         self.calibBtn = self.findChild(QPushButton, 'startBtn')
         self.calibBtn.clicked.connect(lambda: self.startCalibration(dstPage))
-        
         
     def uploadVideos(self, camId):
         # Open file dialog, to get Video file path
@@ -89,6 +90,22 @@ class Calibration(QWidget):
         stCamVideo = Video(self.params.getStCamCalibPath())
         mvCamVideo = Video(self.params.getMvCamCalibPath())
         
+        # Get the orientation of both videos
+        stCamOrientation = getVideoOrientation(stCamVideo)
+        mvCamOrientation = getVideoOrientation(mvCamVideo)
+        
+        # Set defulat value for static and moving camera size.
+        # None is used so when processing, no operations are necessary
+        stCamSize = mvCamSize = None
+        
+        if videoNeedsResize(stCamVideo, self.params.getFrameDefaultSize(stCamOrientation)):
+            # Check if static camera size needs to be resized. And if so, retrieve the default dimension
+            stCamSize = self.params.getFrameDefaultSize(stCamOrientation)
+            
+        if videoNeedsResize(mvCamVideo, self.params.getFrameDefaultSize(mvCamOrientation)):
+            # Check if moving camera size needs to be resized. And if so, retrieve the default dimension
+            mvCamSize = self.params.getFrameDefaultSize(mvCamOrientation)
+        
         print("Starting with calibration...")
         
         corners = (self.cornersX, self.cornersY)
@@ -97,7 +114,7 @@ class Calibration(QWidget):
         stCamCalibration = CameraCalibration(stCamVideo, corners)
         mvCamCalibration = CameraCalibration(mvCamVideo, corners)
         
-        if not stCamCalibration.calibrateCamera() or not mvCamCalibration.calibrateCamera():
+        if not stCamCalibration.calibrateCamera(stCamSize) or not mvCamCalibration.calibrateCamera(mvCamSize):
             # Something went wrong in one of the two cameras
             print("Something went wrong when calibrating the two cameras. ")
             exit(-1)
@@ -106,11 +123,24 @@ class Calibration(QWidget):
         
         # Otherwise, store the two instances inside the parameter class
         self.params.setCamsCalibData(stCamCalibration, mvCamCalibration)
+        
+        # Get current time in format: YY_MM_DD_hh_mm
+        now = datetime.now().strftime("%y_%m_%d_%H_%M_%s")
+        path = 'calibrations/calibration-%s/'%now
+        
+        if not os.path.exists(path):
+            # If the path not exsists, create new
+            os.mkdir(path)
+            
+            # Then store the two interesting informations (K and dist) for both cameras
+            np.savetxt(path + "st_cam_intrinsic.dat", stCamCalibration.getIntrinsicMatrix())
+            np.savetxt(path + "st_cam_distCoeff.dat", stCamCalibration.getDistortionCoefficients())
+            np.savetxt(path + "mv_cam_intrinsic.dat", mvCamCalibration.getIntrinsicMatrix())
+            np.savetxt(path + "mv_cam_distCoeff.dat", mvCamCalibration.getDistortionCoefficients())
 
         # Then, hide the current widget and show the new one
         self.hide()
         dstPage.show()
-    
     
     def enableStartCalibBtn(self):
         # Check if it's possible to enable the button to start camera calibration

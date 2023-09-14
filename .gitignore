@@ -7,3 +7,6 @@ functions/__pycache__
 gui/__pycache__
 *_example/
 /examples
+calibration-*/
+relight-*/
+frames/

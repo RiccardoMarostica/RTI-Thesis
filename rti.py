@@ -13,6 +13,8 @@ from classes.neuralNetwork import NeuralNetwork
 from constants import *
 from utils import *
 
+# from concurrent.futures import ThreadPoolExecutor
+
 def main():
     
     print("Starting camera calibration...")
@@ -259,12 +261,12 @@ def main():
     # Then create the train dataset
     storeTrainDataset(fileName, dataName, lightData, meanUV)
     
-    # Create PCA class
-    pca = PCAClass(BASE_DIR, dataName, 8)
-    # Read the dataset and get ready to perform PCA
-    pca.readDataset()
-    # Perform PCA on training dataset
-    pca.applyPCA()
+    # # Create PCA class
+    # pca = PCAClass(BASE_DIR, dataName, 8)
+    # # Read the dataset and get ready to perform PCA
+    # pca.readDataset()
+    # # Perform PCA on training dataset
+    # pca.applyPCA()
     
     pca = PCAClass(BASE_DIR, dataName, 8)
 

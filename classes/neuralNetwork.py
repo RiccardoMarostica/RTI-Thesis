@@ -10,7 +10,7 @@ from constants import *
 from classes.pixelEncoder import *
 
 class NeuralNetwork:
-    def __init__(self, baseDir, pcaNumber) -> None:
+    def __init__(self, baseDir) -> None:
         
         # H value where H is a frequency domain space -> So we have a 20 dimensional space (2 x 10)
         self.light_freqs = 10
@@ -22,9 +22,6 @@ class NeuralNetwork:
 
         # Epoch size
         self.epochs = 20
-
-        # Number of PCA bases. Value in which PSNR and SSIM stabilise
-        self.pcaNumber = pcaNumber
         
         # multiply 1024 for the 20-dimensional space
         self.batch_size = 1024*20
@@ -32,17 +29,12 @@ class NeuralNetwork:
         # Get base dir, training data dir and output dir
         self.baseDir = baseDir
         self.trainDataDir = baseDir + "pca_norm"
-        self.outDir = baseDir + "models/"
-                
-        # try:
-        #     os.mkdir(self.outDir)
-        # except:
-        #     print("Output directory already present. ")
-        #     exit(-1)
+        self.outDir = baseDir + "models"
+        
         
     def extractDatasets(self):        
         # Get projection pixels computed before and the training data of the model
-        train_data_file = "%s/train_data_pca_%02d.h5"%(self.trainDataDir,self.pcaNumber)
+        train_data_file = "%s/train_data_pca.h5"%(self.trainDataDir)
                 
         # Then open the training data file, which was computed in the previous step
         f = h5py.File(train_data_file,"r")
@@ -50,20 +42,49 @@ class NeuralNetwork:
         # And get from the file X (compressed pixels and light direction) and Y (intensity values) dataset
         self.x_train = f["X"]
         self.y_train = f["Y"]
+        
+    def permuteChunk(self, chunk):
+        perm_indices = np.random.permutation(chunk.shape[0])
+        res = chunk[perm_indices, ...]
+        return res
     
     def shuffleDataset(self):
         # Convert the train values into an array
         self.x_train = np.array(self.x_train)
         self.y_train = np.array(self.y_train)
+        
+        # pool = ThreadPool(4)
 
+        # # Permute X train data
+        # chunks = np.array_split(self.x_train, 4, axis = 0)
+        
+        # for i in range(len(chunks)):
+        #     chunk = chunks[i]
+            
+        #     pool.add_task(self.permuteChunk, chunk)
+        
+        # pool.wait_completion()
+        
+        # self.x_train = np.concatenate(pool.get_results(), axis = 0)
+        
+        # # Permute Y (intensity) train data
+        # chunks = np.array_split(self.y_train, 4, axis = 0)
+        
+        # for i in range(len(chunks)):
+        #     chunk = chunks[i]
+            
+        #     pool.add_task(self.permuteChunk, chunk)
+        
+        # pool.wait_completion()
+        
+        # self.y_train = np.concatenate(pool.get_results(), axis = 0)
+        
         print("Shuffling...")
         perm_indices = np.random.permutation(self.x_train.shape[0])
         self.x_train = self.x_train[perm_indices,...]
         self.y_train = self.y_train[perm_indices,...]
         
     def train_one_epoch(self, x_train, y_train, model, loss_fn, optimizer, batch_size, device ):
-        # Start the train of the model
-        model.train()
         
         if self.light_noise_sigma > 0:
             # If there is noise, add it to x_train array (only the light direction)
@@ -78,6 +99,9 @@ class NeuralNetwork:
         
         loss_sum = 0.0
 
+        # Start the train of the model
+        model.train()
+        
         # Now, loop over the permutations
         tq = tqdm(perm_batches, desc="Training progress", unit="batch", position = 0, leave = True )    
         for ii, batch in enumerate(tq):
@@ -89,21 +113,19 @@ class NeuralNetwork:
             
             # Then convert the tensor based on the device used (CPU or CUDA)
             X, y = X.to(device), y.to(device)
-
+            
             # Compute prediction error
             pred = model(X)
             loss = loss_fn(pred, y)
-
             # Sum the loss for each batch
             loss_sum += loss.item()
             
             tq.set_description("avg loss: %2.4f "%(loss_sum/(ii+1)))
-
             # Backpropagation
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        
+            
         # Then calculate the average loss and return it
         loss_avg = loss_sum / n_batches
         return loss_avg
@@ -116,6 +138,7 @@ class NeuralNetwork:
         # Initialise Adam optimiser, passing the parameters of the model and the input learning rate
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+
         # For each epoch
         for t in range(epochs):
 
@@ -127,6 +150,7 @@ class NeuralNetwork:
             print("Train loss: %f"%loss)
             
             train_losses.append(loss)
+            
 
         print("Done!")
         return train_losses
@@ -150,20 +174,45 @@ class NeuralNetwork:
         model.to(device)
         
         # Start the train for the first epoch
-        train1 = self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr, self.epochs, device)
+        self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr, self.epochs, device)
 
         # Start the train for the second epoch
-        train2 = self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr*1e-1, 10, device)
+        self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr*1e-1, 10, device)
         
         # Build the optput dir to store the weights
-        
-        MODEL_PATH = self.outDir + "pixel-weights.pt"
+        try:
+            # Creating the base dir
+            os.mkdir(self.outDir)
+        except:
+            print("Error creating the new folder. ")
+            # Not possible to create the dir, close the app
+            exit(-1)
+            
+        MODEL_PATH = self.outDir + "/pixel-weights.pt"
         
         # Store them
         torch.save(model.state_dict(), MODEL_PATH)
-        print("Model saved in ", MODEL_PATH)  
+        print("Model saved in ", MODEL_PATH)
+    
+    def extractUVMean(self):
+        datafile = self.baseDir + "data.h5"
+        # Now, read the coin_train file, created in the previous step (which contains the train data and the UVMean)
+        with h5py.File(datafile,"r") as f:
+            # Array with UV mean for each pixel
+            self.UVmean = np.array(f["UVMean"])
+                            
+        MODEL_PATH = self.outDir + "/uvMean.h5"
         
-    def showNNResults(self):
+        f = h5py.File(MODEL_PATH, "w")
+        # ... and create datasets
+        f.create_dataset("UVMean", self.UVmean.shape, data=self.UVmean)
+        # Then stop writing
+        f.close()
+
+        # Lastly, delete the datafile
+        os.remove(datafile)
+        
+    def showNNResults(self, uvMean):
         # Get proj pixels file
         proj_pixels_pca_file = self.trainDataDir + "/proj_pixels_pca.npy"
         self.proj_pixels = np.load(proj_pixels_pca_file)
@@ -180,6 +229,8 @@ class NeuralNetwork:
         # Now start to plot the light
         center_x = center_y = DEFAULT_SQUARE_SIZE // 2
         radius = DEFAULT_SQUARE_SIZE // 2    
+        
+        self.UVmean = uvMean
         
         while(True):
             # Draw plot image
@@ -204,5 +255,9 @@ class NeuralNetwork:
             images = predictRelight(self.model, light, self.proj_pixels)
             
             Y_img = images[0,:,:].astype(np.uint8)
+            outImg = np.expand_dims(Y_img, axis=2)
             
-            cv.imshow("Output: ", Y_img)
+            outImg = np.dstack((outImg, self.UVmean))
+            outImg = cv.cvtColor(outImg, cv.COLOR_YUV2BGR)   
+            
+            cv.imshow("Output: ", outImg)

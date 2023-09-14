@@ -12,7 +12,7 @@ class RTI:
         """
         
         # Create methods to perform feature matching
-        self.sift = cv.SIFT_create(nfeatures=5000)
+        self.sift = cv.SIFT_create(nfeatures=1000)
         self.flann = cv.FlannBasedMatcher_create()
         self.bruteforce = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
         
@@ -100,6 +100,7 @@ class RTI:
 
         # ... and get the first frame
         _, frame = video.getCurrentFrame()
+        frame = cv.resize(frame, (1080, 1920))
 
         # Array used to store points, to then use them to calculate the homography
         points = []
@@ -120,7 +121,7 @@ class RTI:
 
             if len(points) == 4:
 
-                # Set the destination points for the real world.
+                # Set destination points for the real world.
                 # In this case we are setting to project the image into a square
                 destinationPoints = np.array([
                     [0, 0],
@@ -129,10 +130,10 @@ class RTI:
                     [0, DEFAULT_SQUARE_SIZE]
                 ])
 
-                # Convert the points into integer value
+                # Convert the points of the image into integer value
                 points = np.array(points).astype(np.int32)
 
-                # Now we compute the Homography between the World system and the Static Camera
+                # Homography from the World system and the Static Camera
                 homograhy, _ = cv.findHomography(points, destinationPoints)
 
                 # Destroy the window used to retrieve the points
@@ -177,8 +178,12 @@ class RTI:
                 print("Not enough points")
                 return None
     
+    def extractFeaturesFromFrame(self, frame):
+        keypoints, descriptors = self.sift.detectAndCompute(frame, None)
+        return keypoints, descriptors
+        
 
-    def getHomographyWithFeatureMatching(self, frame1, frame2, name, debug = False, cutFrame1 = None, cutFrame2 = None):
+    def getHomographyWithFeatureMatching(self, frame1, frame2, cutFrame1 = None, cutFrame2 = None):
         """The function retrieves an homography between two views, trough feature matching.\n
         For both views (two distinct frames), features are detected using SIFT. The detected features (with keypoints and descriptors) are matched in the two views using FLANN matcher, in which for each descriptor K best matches are found.\n
         From the matches, then, the keypoints of both views (source view as frame1 and destination view as frame2) are extracted and from them the homography between the two views is calculated.
@@ -190,7 +195,6 @@ class RTI:
         Returns:
             Any: Return a projective transformation (Homography - 3x3 Matrix) if the feature matching is done correctly, otherwise returns an empty list.
         """
-        
         try:
             # Compute features using SIFT in both frames. Return keypoints and related descriptors
             keypoints1, descriptors1 = self.sift.detectAndCompute(frame1, None)
@@ -246,18 +250,6 @@ class RTI:
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
             
-            if debug:
-                
-                # Draw matches
-                img_matches = np.empty((max(frame1.shape[0], frame2.shape[0]), frame1.shape[1]+frame2.shape[1], 3), dtype=np.uint8)
-                cv.drawMatches(frame1, keypoints1, frame2, keypoints2, goodMatches, img_matches, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
-                cv.imshow(name, frame2)
-                
-                # Press Q on the keyboard to exit.
-                if (cv.waitKey(25) & 0xFF == ord('q')):
-                    return src, dst, homography
-                   
             return src, dst, homography
         else:
             return None, None, None
