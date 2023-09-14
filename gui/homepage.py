@@ -24,8 +24,14 @@ class Homepage(QWidget):
         self.start : QPushButton = self.findChild(QPushButton, 'startBtn')
         
         # Now add the event to show the other widget, and hide this one
-        self.start.clicked.connect(lambda: self.showCalibration(dstPage))
+        self.start.clicked.connect(lambda: self.showDstPage(dstPage))
 
-    def showCalibration(self, dstPage: QWidget):
+    def showDstPage(self, dstPage: QWidget):
         self.hide()
         dstPage.show()
+        
+    def setRelightingHistoryBtn(self, dstPage: QWidget):
+        self.history : QPushButton = self.findChild(QPushButton, 'historyBtn')
+        
+        self.history.clicked.connect(lambda: self.showDstPage(dstPage))
+        

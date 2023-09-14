@@ -35,14 +35,11 @@ class Video:
         Returns: 
             If the function grabs a frame, returns True and the current frame. Otherwise, returns False and an empty frame.
         """
-        if self.isOpen():
-            # If the video is initalised, grab a frame.
-            # If no frame has been grabbed, return False and an empty image
-            ret, frame = self.video.read()
-            return ret, frame
+        # If the video is initalised, grab a frame.
+        # If no frame has been grabbed, return False and an empty image
+        ret, frame = self.video.read()
+        return ret, frame
         
-        # Returns False and an empty frame in case the video is not initalised
-        return False, []
 
     def getFPS(self) -> float:
         """The function returns the number of Frame Per Second(FPS) the video supports.
@@ -50,7 +47,7 @@ class Video:
         Returns:
             float: Returns the FPS of the Video if it is initliased. Otherwise, returns zero.
         """
-        return self.video.get(cv.CAP_PROP_FPS) if self.isOpen() else 0
+        return self.video.get(cv.CAP_PROP_FPS)
 
     def getWidth(self) -> int:
         """The function returns the width of the Video.

@@ -1,6 +1,8 @@
 import torch, h5py, numpy as np, cv2 as cv
 from constants import *
 
+from classes.video import Video
+
 def getDevice():
     # Get cpu or gpu device for training
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -13,6 +15,12 @@ def storeTrainDataset(fileName, lightData, UVMean):
     f.create_dataset("UVMean", UVMean.shape, data=UVMean)
     # Then stop writing
     f.close()
+    
+def getUVMean(datafile):
+    # Now, read the coin_train file, created in the previous step (which contains the train data and the UVMean)
+    with h5py.File(datafile,"r") as f:
+        # Array with UV mean for each pixel
+        return np.array(f["UVMean"])
 
 def predictRelight(model, L, proj_pixels, device = None):
     if device is None:
@@ -57,14 +65,23 @@ def predictRelight(model, L, proj_pixels, device = None):
 
     return out
 
+def getVideoOrientation(video: Video):
+    return 'portrait' if video.getWidth() < video.getHeight() else 'landscape'
+
+def videoNeedsResize(video: Video, defaultSize: (int, int)):
+    if video.getWidth() > defaultSize[0] and video.getHeight() > defaultSize[1]:
+        return True
+    return False
+
 def normaliseCoordinate(value : float, dim: int) -> float:
         # Convert the coordinates to normalized values between -1 and 1
         return (value / dim) * 2 - 1
 
+def getCoordinateFromNormalised(value: float, dim: int) -> int:
+    return int(((value + 1) * dim) / 2)
+
 
 def getRelightingPlot(dim: int):
-    # Now start to plot the light
-    print("Dim: ", dim)
     
     center_x = center_y = dim // 2
     radius = dim // 2    
@@ -78,3 +95,24 @@ def getRelightingPlot(dim: int):
     cv.line(relightPlot, (center_x, 0), (center_x, dim), (255, 255, 255), 1)
     
     return relightPlot
+
+def getLightDirectionPlot(light, dim):
+        """The function shows light direction inside a plot.
+
+        Args:
+            light_direction (Any): Light direction in normalised coordinates.
+
+        Returns:
+            Any: An image representing a plot of the light direction.
+            """
+        center_x = center_y = dim // 2
+        
+        # Create a blank image
+        image = getRelightingPlot(dim)
+        
+        if light is not None:
+            x = getCoordinateFromNormalised(light[0][0], dim)
+            y = getCoordinateFromNormalised(light[1][0], dim)
+            cv.circle(image, (int(x), int(y)), 10, (0, 255, 0), 2)
+            cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2) 
+        return image

@@ -75,7 +75,7 @@ class VideoAnalysis(QWidget):
          
     def startPointSelection(self, dstPage: PointSelection):
         # Before moving to next widget (point selection), store the last information
-        self.params.setWorldDefaultSize(self.defaultSize)
+        self.params.setOutputImageSize(self.defaultSize)
 
         # Then, hide the current widget and show the new one
         self.hide()
