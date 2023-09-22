@@ -1,5 +1,6 @@
 import torch, h5py, numpy as np, cv2 as cv
 from constants import *
+from skimage.metrics import structural_similarity as ssim
 
 from classes.video import Video
 
@@ -116,3 +117,13 @@ def getLightDirectionPlot(light, dim):
             cv.circle(image, (int(x), int(y)), 10, (0, 255, 0), 2)
             cv.line(image, (center_x, center_y), (int(x), int(y)), (0, 255, 0), 2) 
         return image
+    
+def compareWithSSIM(img1, img2, maxValue = 1.):
+    grayImg1 = cv.cvtColor(img1, cv.COLOR_BGR2GRAY)
+    grayImg2 = cv.cvtColor(img2, cv.COLOR_BGR2GRAY)
+    
+    grayImg1 = grayImg1.astype(np.float32)
+    grayImg2 = grayImg2.astype(np.float32)
+    
+    return ssim(grayImg1, grayImg2, data_range=maxValue)
+    

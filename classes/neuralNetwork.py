@@ -177,7 +177,7 @@ class NeuralNetwork:
         self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr, self.epochs, device)
 
         # Start the train for the second epoch
-        self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr*1e-1, 10, device)
+        self.do_train(self.x_train, self.y_train, model, loss_fn, self.batch_size, lr*1e-1, self.epochs, device)
         
         # Build the optput dir to store the weights
         try:

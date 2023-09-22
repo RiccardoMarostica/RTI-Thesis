@@ -47,6 +47,7 @@ def main():
 
     # Store the first frame of the Static Camera
     _, firstStaticFrame = videoStatic.getCurrentFrame()
+    firstStaticFrame = cv.resize(firstStaticFrame, (1080, 1920))
     
     # And try to get the 4 points in the static video
     worldHomography = videoAnalysis.getWorldHomography(videoStatic)
@@ -59,23 +60,10 @@ def main():
     
     print("Starting video synchronisation...")
     
-    # # Create class to synch the videos
-    # videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
-    # # ... and them synch them
-    # videoSynchronisation.synchroniseVideo()
-    
-    # print("Video synchronisation completed without errors")
-    
-    # # After synchronisation, get the offset between the two videos
-    # # First get the default FPS
-    # defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
-    # # ... and then compute the shift between the videos
-    # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
-    
-    frameDifference = -2    # Frame difference between unive (filename) video camera
+    # frameDifference = -2    # Frame difference between unive (filename) video camera
     # frameDifference = -10   # Frame difference between keys (filename) video camera
     # frameDifference = -6    # Frame difference between paperclip (filename) video camera
-    # frameDifference = -9    # Frame difference between book (filename) video camera
+    frameDifference = -9    # Frame difference between book (filename) video camera
     
     print("Frame difference: ", frameDifference)
     
@@ -101,7 +89,7 @@ def main():
     nFrames = 0
     
     # Array with shape (400, 400, 2) which contains the sum of the U and V value of each pixel along the video
-    sumUV = np.zeros((400, 400, 2))
+    sumUV = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 2))
     
     # Array with shape (nFrames, 400, 400, 3) where, for each pixel, stores the intensity of it, and the light value X and Y (costant along the frame)
     lightData = []
@@ -112,8 +100,6 @@ def main():
     # Get the FPS of both frames
     videoStaticFPS = videoStatic.getFPS()
     videoMovingFPS = videoMoving.getFPS()
-    
-    points = videoAnalysis.getPoints()
     
     while True:
         
@@ -142,25 +128,40 @@ def main():
             break
                     
         staticFrame = cv.resize(staticFrame, (1080, 1920))
+        movingFrame = cv.resize(movingFrame, (1920, 1080))
+        
+        # staticFrame = cv.rectangle(staticFrame, (50, 600), (950, 1500), (255, 0, 0), 3)
+        # movingFrame = cv.rectangle(movingFrame, (250, 80), (1450, 1080), (255, 0, 0), 3)
+        
+        # # Plot images
+        # cv.imshow('Static', staticFrame)
+        # cv.imshow('Moving', movingFrame)
+                    
+        # # Press Q on the keyboard to exit.
+        # if (cv.waitKey(25) & 0xFF == ord('q')):
+        #     break
         
         staticFrames.append(staticFrame)
         movingFrames.append(movingFrame)
-            
     
     print(f"Images acquired. {len(staticFrames)}")
-    
+        
     # Release videos and destroy windows
     videoStatic.releaseVideo()
     videoMoving.releaseVideo()
     cv.destroyAllWindows()
         
     # Create thread pool, with 4 threads
-    pool = ThreadPool(4)
+    nThreads = 6
+    print(f"Number of threads: {nThreads}")
+    pool = ThreadPool(nThreads)
     
-    # Get keypoints and descriptor for first frame
-    featuresFirstStaticFrame = videoAnalysis.extractFeaturesFromFrame(firstStaticFrame, 0)
+    print("Extracting frames from static camera...")
     
     start = time.time()
+
+    # Get keypoints and descriptor for first frame
+    featuresFirstStaticFrame = videoAnalysis.extractFeaturesFromFrame(firstStaticFrame, 0)
     
     for i in range(len(staticFrames)):
         # For each static frame, calculate its features
@@ -171,12 +172,8 @@ def main():
     
     # Get the results
     featuresStaticFrames = pool.get_results()
-        
-    end = time.time()
     
-    print(f"Time of execution to get features from static frames: {int(end - start)} seconds")
-    
-    start = time.time()
+    print("Extracting frames from moving camera...")
     
     for i in range(len(movingFrames)):
         # For each static frame, calculate its features
@@ -190,7 +187,7 @@ def main():
         
     end = time.time()
     
-    print(f"Time of execution to get features from moving frames: {int(end - start)} seconds")
+    print(f"Time of execution to extract features: {int(end - start)} seconds")
     
     # Now sort features based on index
     featuresStaticFrames = sorted(featuresStaticFrames, key = lambda x: x[0])
@@ -202,15 +199,15 @@ def main():
     # Create a list of features that will be matched using feature matching technique
     featuresStaticStatic = list(zip(featuresStaticFrames, featuresFirstFrame))
     featuresStaticMoving = list(zip(featuresStaticFrames, featuresMovingFrames))
-        
-    start = time.time()
-    
+      
     print("Extracting matches between first static frame and other static frames...")
+      
+    start = time.time()    
     
     for i in range(len(featuresStaticStatic)):
         feature = featuresStaticStatic[i]
         # For each static frame, calculate its features
-        pool.add_task(videoAnalysis.matchFeatures, feature)
+        pool.add_task(videoAnalysis.matchFeatures, feature, ((50, 950), (600, 1600)), ((50, 950), (600, 1600)))
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -218,13 +215,15 @@ def main():
     # Get the results
     matchingStaticStatic = pool.get_results()
     
+    cv.destroyAllWindows()
+    
     print("Extracting matches between static frames and moving frames...")
     
     # Repeat the process
     for i in range(len(featuresStaticMoving)):
         feature = featuresStaticMoving[i]
         # For each static frame, calculate its features
-        pool.add_task(videoAnalysis.matchFeatures, feature)
+        pool.add_task(videoAnalysis.matchFeatures, feature, ((50, 950), (600, 1600)), ((250, 1450), (80, 1080)))
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -233,6 +232,8 @@ def main():
     matchingStaticMoving = pool.get_results()
     
     end = time.time()
+    
+    cv.destroyAllWindows()
     
     print(f"Time of execution to extract good matches: {int(end - start)} seconds")
     
@@ -247,11 +248,11 @@ def main():
         staticFrame = staticFrames[i]
         movingFrame = movingFrames[i]
         # Get homographies and dst pts
-        _, _, _, homographyStatic = matchingStaticStatic[i]
+        _, _, dstStatic, homographyStatic = matchingStaticStatic[i]
         _, _, dstPts, homographyMoving = matchingStaticMoving[i]
         
         # Calculate light given parameters
-        pool.add_task(videoAnalysis.getLight, staticFrame, movingFrame, homographyStatic, dstPts, homographyMoving, worldHomography, kMoving)
+        pool.add_task(videoAnalysis.getLight, staticFrame, movingFrame, homographyStatic, dstPts, homographyMoving, worldHomography, kMoving, dstStatic)
     
     # Wait completion of the queue
     pool.wait_completion()
@@ -267,7 +268,10 @@ def main():
     
     print("Valid pairs: ", len(validPairs))
     
-    for worldFrame, light in validPairs:
+    for worldFrame, light, match1, match2 in validPairs:
+
+        with open("matches.txt", "a") as f:
+            f.write(f"{light[0][0]};{light[1][0]};{match1};{match2}\n")
         
         # Show the light plot of the calculated light vector
         cirlePlotPnP = getLightDirectionPlot(light, DEFAULT_SQUARE_SIZE)
@@ -309,11 +313,13 @@ def main():
     # Convert from list 2 array
     lightData = np.stack(lightData)
     
+    return
+    
     # Now, store this values inside a file    
     now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
     
     # First get the base dir
-    BASE_DIR = "relights/relight_%s/"%now_string
+    BASE_DIR = "relights/relight-%s/"%now_string
     
     try:
         # Creating the base dir
@@ -328,39 +334,6 @@ def main():
     
     # Then create the train dataset
     storeTrainDataset(fileName, lightData, meanUV)
-    pca = PCAClass(BASE_DIR, fileName, 8)
-
-    print("Reading dataset...")
-    pca.readDataset()
-    print("Reading dataset: DONE")
-
-    print("Applying PCA...")
-    pca.applyPCA()
-    print("Applying PCA: DONE")
-
-    nn = NeuralNetwork(BASE_DIR, 8)
-
-    print("Extracting dataset...")
-    nn.extractDatasets()
-    print("Extracting dataset: DONE")
-
-    print("Shufflings dataset...")
-    nn.shuffleDataset()
-    print("Shuffling dataset: DONE")
-
-    print("Executing NN training...")
-    nn.executeTraining()
-    print("Executing NN trainin: DONE")
-    
-    print("Showing results")    
-    nn.showNNResults()    
-    
-def testNNWithThreads():
-    
-    # First get the base dir
-    BASE_DIR = "relights/relight_23_08_20_14_49/"    
-    # Set the name of the file containing the inital dataset for training
-    fileName = BASE_DIR + "data.h5"
     
     pca = PCAClass(BASE_DIR, fileName, 8)
 
@@ -372,7 +345,7 @@ def testNNWithThreads():
     pca.applyPCA()
     print("Applying PCA: DONE")
 
-    nn = NeuralNetwork(BASE_DIR, 8)
+    nn = NeuralNetwork(BASE_DIR)
 
     print("Extracting dataset...")
     nn.extractDatasets()
@@ -384,14 +357,18 @@ def testNNWithThreads():
 
     print("Executing NN training...")
     nn.executeTraining()
+    uvMean = getUVMean(BASE_DIR + "models/uvMean.h5").astype(np.uint8)
+    nn.extractUVMean(uvMean)
     print("Executing NN trainin: DONE")
     
     print("Showing results")    
     nn.showNNResults()
     
 def testRelighting():
-    BASE_DIR = "relights/relight-2023_09_09_11_02/"    
+    BASE_DIR = "relights/relight_23_09_15_18_15/"    
     nn = NeuralNetwork(BASE_DIR)
+    
+    nn.extractUVMean()
     
     uvMean = getUVMean(BASE_DIR + "models/uvMean.h5").astype(np.uint8)
     
@@ -405,7 +382,6 @@ def testUVMean():
     
         
 if __name__ == "__main__":
-    # main()
-    testRelighting()
-    # testNNWithThreads()
+    main()
+    # testRelighting()
     
