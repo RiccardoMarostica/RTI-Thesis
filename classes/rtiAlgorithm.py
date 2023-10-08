@@ -12,7 +12,7 @@ class RTI:
         """
         
         # Create methods to perform feature matching
-        self.sift = cv.SIFT_create(nfeatures=1000)
+        self.sift = cv.SIFT_create(nfeatures=10000)
         self.flann = cv.FlannBasedMatcher_create()
         self.bruteforce = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
         
@@ -183,7 +183,7 @@ class RTI:
         return keypoints, descriptors
         
 
-    def getHomographyWithFeatureMatching(self, frame1, frame2, cutFrame1 = None, cutFrame2 = None):
+    def getHomographyWithFeatureMatching(self, frame1, frame2, debug = False):
         """The function retrieves an homography between two views, trough feature matching.\n
         For both views (two distinct frames), features are detected using SIFT. The detected features (with keypoints and descriptors) are matched in the two views using FLANN matcher, in which for each descriptor K best matches are found.\n
         From the matches, then, the keypoints of both views (source view as frame1 and destination view as frame2) are extracted and from them the homography between the two views is calculated.
@@ -212,33 +212,49 @@ class RTI:
         
         goodMatches = []
         for m1, m2 in matches:
-            if m1.distance < 0.7 * m2.distance:
+            if m1.distance < 0.8 * m2.distance:
                 
                 src_pt = keypoints1[m1.queryIdx].pt
                 dst_pt = keypoints2[m1.trainIdx].pt
                 
-                if cutFrame1 is not None and cutFrame2 is not None:
+                if debug == True:
+                    isInsideSrcCut = (760 <= src_pt[1] <= 1160) and (340 <= src_pt[0] <= 740)
                     
-                    # Get cut points for src
-                    srcCutX = cutFrame1[0]
-                    srcCutY = cutFrame1[1]
-                    
-                    # Get cut points for dst
-                    dstCutX = cutFrame2[0]
-                    dstCutY = cutFrame2[1]
-                    
-                    isInsideSrcCut = (srcCutX[0] <= src_pt[0] <= srcCutX[1]) and (srcCutY[0] <= src_pt[1] <= srcCutY[1])
-                    isInsideDstCut = (dstCutX[0] <= dst_pt[0] <= dstCutX[1]) and (dstCutY[0] <= dst_pt[1] <= dstCutY[1])
-                    
-                    if isInsideSrcCut == True and isInsideDstCut == True:
+                    if isInsideSrcCut == True:
+                                
                         src.append(src_pt)
                         dst.append(dst_pt)
+                        
+                        goodMatches.append([m1])
+                        
+                else:
+                            
+                        src.append(src_pt)
+                        dst.append(dst_pt)
+                        
+                        goodMatches.append([m1])
+                
+                
+                # if cutFrame1 is not None and cutFrame2 is not None:
+                    
+                #     # Get cut points for src
+                #     srcCutX = cutFrame1[0]
+                #     srcCutY = cutFrame1[1]
+                    
+                #     # Get cut points for dst
+                #     dstCutX = cutFrame2[0]
+                #     dstCutY = cutFrame2[1]
+                    
+                #     isInsideSrcCut = (srcCutX[0] <= src_pt[0] <= srcCutX[1]) and (srcCutY[0] <= src_pt[1] <= srcCutY[1])
+                #     isInsideDstCut = (dstCutX[0] <= dst_pt[0] <= dstCutX[1]) and (dstCutY[0] <= dst_pt[1] <= dstCutY[1])
+                    
+                #     if isInsideSrcCut == True and isInsideDstCut == True:
+                #         src.append(src_pt)
+                #         dst.append(dst_pt)
                                 
-                        goodMatches.append(m1)
+                #         goodMatches.append(m1)
                                 
-                else:            
-                    src.append(src_pt)
-                    dst.append(dst_pt)
+                # else:            
                     
         # Set a treshold (MIN_MATCH_COUNT) which denotes the minimum number of matches to get the Homography
         if len(src) >= MIN_MATCH_COUNT:
@@ -249,6 +265,14 @@ class RTI:
             
             # Get the Homography. In this case the method used to findthe transformation is through RANSAC, a consensus-based approach. Since RANSAC is used, it's necessary to set a treshold in which a point pair is considered as an inlier.
             homography, _ = cv.findHomography(src, dst, cv.RANSAC, 5.0)
+            
+            if debug == True:
+                # frame1 = cv.rectangle(frame1, (340, 760), (740, 1160), (255, 0, 0), 3)
+                img3 = cv.drawMatchesKnn(frame1,keypoints1,frame2,keypoints2,goodMatches,None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+                cv.imshow("Matches", img3)
+                # Press Q on the keyboard to exit.
+                if (cv.waitKey(25) & 0xFF == ord('q')):
+                    return
             
             return src, dst, homography
         else:

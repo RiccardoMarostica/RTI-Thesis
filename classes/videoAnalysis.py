@@ -13,7 +13,7 @@ class VideoAnalysis:
         """
 
         # Create methods to perform feature matching
-        self.sift = cv.SIFT_create(nfeatures=3000)
+        self.sift = cv.SIFT_create(nfeatures=10000)
         self.flann = cv.FlannBasedMatcher_create()
 
         self.params = Parameters()
@@ -93,12 +93,18 @@ class VideoAnalysis:
             cv.imshow("Point detection", frame)
             cv.setMouseCallback("Point detection", self.getPointFromImage, param=[points])
 
-            # For simplicity, draw lines between points
-            for i in range(len(points)):
-                cv.line(frame, tuple(points[i].astype(int)), tuple(points[(i + 1) % len(points)].astype(int)), (0, 0, 255), 3)
+            # # For simplicity, draw lines between points
+            # for i in range(len(points)):
+            #     cv.line(frame, tuple(points[i].astype(int)), tuple(points[(i + 1) % len(points)].astype(int)), (0, 0, 255), 3)
 
             if len(points) == 4:
+                cv.line(frame, tuple(points[0].astype(int)), tuple(points[1].astype(int)), (0,0,255), 3)
+                cv.line(frame, tuple(points[1].astype(int)), tuple(points[2].astype(int)), (0,0,255), 3)
+                cv.line(frame, tuple(points[2].astype(int)), tuple(points[3].astype(int)), (0,0,255), 3)
+                cv.line(frame, tuple(points[3].astype(int)), tuple(points[0].astype(int)), (0,0,255), 3)
 
+                cv.imwrite("images/method/first_frame.jpg", frame)
+                
                 # Set the destination points for the real world.
                 # In this case we are setting to project the image into a square
                 destinationPoints = np.array([

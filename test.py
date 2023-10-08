@@ -6,6 +6,7 @@ from datetime import datetime
 # Import classes
 from classes.cameraCalibration import CameraCalibration
 from classes.video import Video
+from classes.videoSynchronisation import VideoSynchronisation
 from classes.videoAnalysis import VideoAnalysis
 from classes.threadPool import ThreadPool
 from classes.pca import PCAClass
@@ -59,11 +60,24 @@ def main():
         print("Homography calculated without errors")
     
     print("Starting video synchronisation...")
+        
+    # # Create class to synch the videos
+    # videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
+    # # ... and them synch them
+    # videoSynchronisation.synchroniseVideo()
     
-    # frameDifference = -2    # Frame difference between unive (filename) video camera
+    # print("Video synchronisation completed without errors")
+    
+    # # After synchronisation, get the offset between the two videos
+    # # First get the default FPS
+    # defaultFps = max(videoStatic.getFPS(), videoMoving.getFPS())
+    # # ... and then compute the shift between the videos
+    # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
+    
+    frameDifference = -2    # Frame difference between unive (filename) video camera
     # frameDifference = -10   # Frame difference between keys (filename) video camera
     # frameDifference = -6    # Frame difference between paperclip (filename) video camera
-    frameDifference = -9    # Frame difference between book (filename) video camera
+    # frameDifference = -9    # Frame difference between book (filename) video camera
     
     print("Frame difference: ", frameDifference)
     
@@ -131,7 +145,7 @@ def main():
         movingFrame = cv.resize(movingFrame, (1920, 1080))
         
         # staticFrame = cv.rectangle(staticFrame, (50, 600), (950, 1500), (255, 0, 0), 3)
-        # movingFrame = cv.rectangle(movingFrame, (250, 80), (1450, 1080), (255, 0, 0), 3)
+        # movingFrame = cv.rectangle(movingFrame, (400, 200), (1200, 1000), (255, 0, 0), 3)
         
         # # Plot images
         # cv.imshow('Static', staticFrame)
@@ -145,7 +159,7 @@ def main():
         movingFrames.append(movingFrame)
     
     print(f"Images acquired. {len(staticFrames)}")
-        
+            
     # Release videos and destroy windows
     videoStatic.releaseVideo()
     videoMoving.releaseVideo()
@@ -207,7 +221,7 @@ def main():
     for i in range(len(featuresStaticStatic)):
         feature = featuresStaticStatic[i]
         # For each static frame, calculate its features
-        pool.add_task(videoAnalysis.matchFeatures, feature, ((50, 950), (600, 1600)), ((50, 950), (600, 1600)))
+        pool.add_task(videoAnalysis.matchFeatures, feature)
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -223,7 +237,7 @@ def main():
     for i in range(len(featuresStaticMoving)):
         feature = featuresStaticMoving[i]
         # For each static frame, calculate its features
-        pool.add_task(videoAnalysis.matchFeatures, feature, ((50, 950), (600, 1600)), ((250, 1450), (80, 1080)))
+        pool.add_task(videoAnalysis.matchFeatures, feature)
         
     # Wait completion of the queue
     pool.wait_completion()
@@ -268,13 +282,21 @@ def main():
     
     print("Valid pairs: ", len(validPairs))
     
+    i = 0
+    
     for worldFrame, light, match1, match2 in validPairs:
 
-        with open("matches.txt", "a") as f:
-            f.write(f"{light[0][0]};{light[1][0]};{match1};{match2}\n")
+        # with open("matches.txt", "a") as f:
+        #     f.write(f"{light[0][0]};{light[1][0]};{match1};{match2}\n")
         
         # Show the light plot of the calculated light vector
         cirlePlotPnP = getLightDirectionPlot(light, DEFAULT_SQUARE_SIZE)
+        
+        if i % 100 == 0:
+            cv.imwrite("images/method/%d_static.jpg"%i, staticFrames[i])
+            cv.imwrite("images/method/%d_moving.jpg"%i, movingFrames[i])
+            cv.imwrite("images/method/%d_circle.jpg"%i, cirlePlotPnP)
+            cv.imwrite("images/method/%d_world.jpg"%i, worldFrame)
         
         # First, convert the frame from GRAY to BGR
         # Then from BGR to YUV, to extract the intensity and calculate U and V mean
@@ -299,6 +321,8 @@ def main():
         # Increament number of frames acquired
         nFrames += 1
         
+        i += 1
+        
         # Plot images
         cv.imshow('Light plot PnP', cirlePlotPnP)
         cv.imshow('World frame', worldFrame)
@@ -313,8 +337,6 @@ def main():
     # Convert from list 2 array
     lightData = np.stack(lightData)
     
-    return
-    
     # Now, store this values inside a file    
     now_string = datetime.now().strftime("%y_%m_%d_%H_%M")
     
@@ -327,7 +349,7 @@ def main():
     except:
         print("Error creating the new folder. ")
         # Not possible to create the dir, close the app
-        exit(-1)
+        exit(-1)    
     
     # Set the name of the file containing the inital dataset for training
     fileName = BASE_DIR + "data.h5"

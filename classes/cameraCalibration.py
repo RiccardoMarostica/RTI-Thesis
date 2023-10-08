@@ -97,11 +97,14 @@ class CameraCalibration:
                     
                     if (self.debug == True  and ret == True):
                         # If we are in debugging and there is a pattern, draw chessboard corners in the image
-                        cv.drawChessboardCorners(frame, (self.cornersX, self.cornersY), refinedCorners, ret)
+                        frame = cv.drawChessboardCorners(frame, (self.cornersX, self.cornersY), refinedCorners, ret)
+                        path = "calibrations/drawChess/img_" + str(self.milliseconds) + ".jpg"
+                        cv.imwrite(path, frame)
 
                 # Jump 2 seconds ahead, to next frame, to get different view of the Calibration target
                 self.milliseconds += 2000
                 self.video.setVideoPosition(self.milliseconds)
+                
                 
                 self.video.showFrame(frame, debug = self.debug)
                 

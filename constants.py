@@ -1,8 +1,13 @@
 STATIC_VIDEO_CALIBRATION_FILE_PATH = "./video/round-table/static/calibration.mov"
 MOVING_VIDEO_CALIBRATION_FILE_PATH = "./video/round-table/moving/calibration.mov"
+# STATIC_VIDEO_CALIBRATION_FILE_PATH = "./video/coins/static/calibration.mp4"
+# MOVING_VIDEO_CALIBRATION_FILE_PATH = "./video/coins/moving/calibration.mp4"
 
-STATIC_VIDEO_FILE_PATH = "./video/round-table/static/book.mov"
-MOVING_VIDEO_FILE_PATH = "./video/round-table/moving/book.mov"
+STATIC_VIDEO_FILE_PATH = "./video/round-table/static/unive.mov"
+MOVING_VIDEO_FILE_PATH = "./video/round-table/moving/unive.mov"
+
+# STATIC_VIDEO_FILE_PATH = "./video/coins/static/coin1.mp4"
+# MOVING_VIDEO_FILE_PATH = "./video/coins/moving/coin1.mp4"
 
 CALIBRATION_PATTERN_IMG_PATH = "./video/calibration_pattern.png"
 

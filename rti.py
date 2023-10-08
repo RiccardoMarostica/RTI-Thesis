@@ -59,12 +59,12 @@ def main():
     
     print("Starting video synchronisation...")
     
-    # # Create class to synch the videos
+    # Create class to synch the videos
     # videoSynchronisation = VideoSynchronisation(STATIC_VIDEO_FILE_PATH, MOVING_VIDEO_FILE_PATH)
-    # # ... and them synch them
+    # ... and them synch them
     # videoSynchronisation.synchroniseVideo()
     
-    # print("Video synchronisation completed without errors")
+    print("Video synchronisation completed without errors")
     
     # # After synchronisation, get the offset between the two videos
     # # First get the default FPS
@@ -72,10 +72,11 @@ def main():
     # # ... and then compute the shift between the videos
     # frameDifference = videoSynchronisation.getFrameDifference(defaultFps)
     
-    frameDifference = -2    # Frame difference between unive (filename) video camera
+    # frameDifference = -2    # Frame difference between unive (filename) video camera
     # frameDifference = -10   # Frame difference between keys (filename) video camera
     # frameDifference = -6    # Frame difference between paperclip (filename) video camera
     # frameDifference = -9    # Frame difference between book (filename) video camera
+    frameDifference = 82
     
     print("Frame difference: ", frameDifference)
     
@@ -101,7 +102,7 @@ def main():
     nFrames = 0
     
     # Array with shape (400, 400, 2) which contains the sum of the U and V value of each pixel along the video
-    sumUV = np.zeros((400, 400, 2))
+    sumUV = np.zeros((DEFAULT_SQUARE_SIZE, DEFAULT_SQUARE_SIZE, 2))
     
     # Array with shape (nFrames, 400, 400, 3) where, for each pixel, stores the intensity of it, and the light value X and Y (costant along the frame)
     lightData = []
@@ -131,13 +132,13 @@ def main():
         if retStatic != True or retMoving != True or checkStaticFrame or checkMovingFrame:
             break
         
-        # Convert frames to grayscale
-        staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
-        movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
+        # # Convert frames to grayscale
+        # staticFrame = cv.cvtColor(staticFrame, cv.COLOR_BGR2GRAY)
+        # movingFrame = cv.cvtColor(movingFrame, cv.COLOR_BGR2GRAY)
         
         # UniVE video
-        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, "Static to Static", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((500, 1700), (1400, 2600)))
-        _, ptsMovingCam, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, "Static to Moving", False, cutFrame1 = ((500, 1700), (1400, 2600)), cutFrame2 = ((450, 1150), (200, 900)))    
+        _, _, homographyStaticToStatic = rti.getHomographyWithFeatureMatching(staticFrame, firstStaticFrame, False)
+        _, ptsMovingCam, homographyStaticToMoving = rti.getHomographyWithFeatureMatching(staticFrame, movingFrame, True)    
         
         if homographyStaticToStatic is not None and homographyStaticToMoving is not None:
             
@@ -193,7 +194,7 @@ def main():
             # Plot images
             cv.imshow('Light plot PnP', cirlePlotPnP)
             cv.imshow('World frame', worldFrame)
-            # cv.imshow('World frame moving', warpedMoving)
+            cv.imshow('World frame moving', warpedMoving)
             
         else:
             # Otherwise, if one of the two homographies is not defined, then the light vector is None
@@ -222,9 +223,7 @@ def main():
             
             # Increament number of frames acquired
             nFrames += 1
-        
-        print(f"Frame stored: {nFrames}, on the total frames of: {videoStatic.getTotalFrames()}")
-            
+                    
         # Press Q on the keyboard to exit.
         if (cv.waitKey(25) & 0xFF == ord('q')):
             break
@@ -268,32 +267,32 @@ def main():
     # # Perform PCA on training dataset
     # pca.applyPCA()
     
-    pca = PCAClass(BASE_DIR, dataName, 8)
+    # pca = PCAClass(BASE_DIR, dataName, 8)
 
-    print("Reading dataset...")
-    pca.readDataset()
-    print("Reading dataset: DONE")
+    # print("Reading dataset...")
+    # pca.readDataset()
+    # print("Reading dataset: DONE")
 
-    print("Applying PCA...")
-    pca.applyPCA()
-    print("Applying PCA: DONE")
+    # print("Applying PCA...")
+    # pca.applyPCA()
+    # print("Applying PCA: DONE")
 
-    nn = NeuralNetwork(BASE_DIR, 8)
+    # nn = NeuralNetwork(BASE_DIR, 8)
 
-    print("Extracting dataset...")
-    nn.extractDatasets()
-    print("Extracting dataset: DONE")
+    # print("Extracting dataset...")
+    # nn.extractDatasets()
+    # print("Extracting dataset: DONE")
 
-    print("Shufflings dataset...")
-    nn.shuffleDataset()
-    print("Shuffling dataset: DONE")
+    # print("Shufflings dataset...")
+    # nn.shuffleDataset()
+    # print("Shuffling dataset: DONE")
 
-    print("Executing NN training...")
-    nn.executeTraining()
-    print("Executing NN trainin: DONE")
+    # print("Executing NN training...")
+    # nn.executeTraining()
+    # print("Executing NN trainin: DONE")
     
-    print("Showing results")    
-    nn.showNNResults()
+    # print("Showing results")    
+    # nn.showNNResults()
         
         
 if __name__ == "__main__":
